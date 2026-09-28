@@ -17,7 +17,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 const DEMO = process.argv.includes("--demo") || process.env.SEED_DEMO === "1";
 
-const DEFAULT_PASSWORD = "Password123!";
+const DEFAULT_PASSWORD = "Magang3173";
 
 const ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL ?? "admin@example.com").trim().toLowerCase();
 const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? "Administrator";
@@ -390,12 +390,12 @@ async function main() {
   if (defaultPasswordInUse) {
     console.warn(
       "PERINGATAN: masih memakai password default. Set SEED_ADMIN_PASSWORD, " +
-        "SEED_MENTOR_PASSWORD, dan SEED_INTERN_PASSWORD sebelum deploy ke produksi.",
+      "SEED_MENTOR_PASSWORD, dan SEED_INTERN_PASSWORD sebelum deploy ke produksi.",
     );
   }
   console.log(
     "Catatan: password akun yang sudah ada TIDAK diubah. Admin dapat mereset " +
-      "sandi per user lewat halaman Users.",
+    "sandi per user lewat halaman Users.",
   );
 }
 

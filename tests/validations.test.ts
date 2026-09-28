@@ -118,7 +118,7 @@ describe("user validation", () => {
       createUserSchema.safeParse({
         name: "Budi",
         email: "not-an-email",
-        password: "Password123!",
+        password: "Magang3173",
         role: "INTERN",
       }).success,
     ).toBe(false);
