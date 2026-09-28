@@ -1,0 +1,1 @@
+ALTER TABLE "performance_reviews" ALTER COLUMN "overall_score" SET DATA TYPE numeric(5, 2);

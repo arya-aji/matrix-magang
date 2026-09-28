@@ -1,0 +1,3147 @@
+# Technical PRD
+
+# Internship Performance Matrix
+
+**Version:** 1.0
+**Status:** Ready for Development
+**Target:** Internal company web application
+**Primary device:** Mobile
+**Deployment:** Coolify
+**Language:** Indonesian UI, English-friendly codebase
+
+---
+
+# 1. Product Definition
+
+## 1.1 Objective
+
+Build a lightweight internal application for managing and monitoring interns.
+
+The primary question the application must answer is:
+
+> **"What is each intern working on today, what is the progress, and is there anything blocking them?"**
+
+The application is NOT intended to be a full HRIS.
+
+The MVP focuses on:
+
+1. Intern management
+2. Mentor management
+3. Task management
+4. Task progress
+5. Daily activity/check-in
+6. Mentor monitoring
+7. Feedback
+8. Basic performance overview
+
+Performance evaluation is based on accumulated work evidence rather than being an isolated scoring system.
+
+---
+
+# 2. Core Product Principles
+
+## 2.1 Mobile First
+
+Mobile is the primary interface.
+
+All primary actions must work comfortably on a 360px-wide viewport.
+
+Target:
+
+* 360px
+* 390px
+* 412px
+* 768px
+* 1280px+
+
+Do not design desktop first and shrink it to mobile.
+
+---
+
+## 2.2 Fast
+
+Application should feel instant for normal CRUD operations.
+
+Requirements:
+
+* Server-rendered pages wherever possible
+* Minimal client-side JavaScript
+* Avoid unnecessary global state
+* Avoid large UI libraries beyond shadcn/ui
+* Use pagination for large lists
+* Use database indexes
+* Use skeleton states instead of blocking spinners
+* Use optimistic UI only where it improves UX
+* Avoid unnecessary API calls
+
+---
+
+## 2.3 Simple
+
+The application should not feel like enterprise HR software.
+
+Prefer:
+
+```text
+Task
+Progress
+Activity
+Feedback
+```
+
+over complicated workflows.
+
+---
+
+# 3. Recommended Technology Stack
+
+## Frontend / Fullstack
+
+```text
+Next.js
+TypeScript
+React
+Tailwind CSS
+shadcn/ui
+Lucide React
+```
+
+Use the Next.js App Router.
+
+---
+
+## Backend
+
+Use Next.js server-side functionality.
+
+Primary approach:
+
+```text
+Server Components
+Server Actions
+Route Handlers where required
+```
+
+Do not create a separate Express/NestJS backend for MVP.
+
+---
+
+## Database
+
+```text
+PostgreSQL
+Drizzle ORM
+Drizzle Kit
+```
+
+---
+
+## Authentication
+
+Use:
+
+```text
+Auth.js
+```
+
+Session-based authentication.
+
+Password authentication is sufficient for MVP.
+
+Passwords must be hashed using a strong password hashing algorithm such as Argon2id or bcrypt with an appropriate cost factor.
+
+Never store plaintext passwords.
+
+---
+
+## Validation
+
+```text
+Zod
+```
+
+All user-controlled input must be validated server-side.
+
+Client-side validation may be added for UX but must never be the only validation.
+
+---
+
+## Icons
+
+```text
+Lucide React
+```
+
+Do not introduce another icon library.
+
+---
+
+## Deployment
+
+```text
+Coolify
+Docker
+PostgreSQL
+```
+
+Use a production Dockerfile.
+
+Node.js LTS should be used.
+
+---
+
+# 4. User Roles
+
+There are three roles.
+
+```text
+ADMIN
+MENTOR
+INTERN
+```
+
+## ADMIN
+
+Can:
+
+* Manage users
+* Manage interns
+* Manage mentors
+* Manage departments
+* Assign mentors
+* Create/edit/delete tasks
+* View all activities
+* View all interns
+* Manage performance criteria
+
+---
+
+## MENTOR
+
+Can:
+
+* View assigned interns
+* Create tasks for assigned interns
+* Update tasks
+* View daily activities
+* Provide feedback
+* View performance history
+* Update task status
+
+Cannot:
+
+* Manage users
+* Manage system configuration
+* Access unrelated interns
+
+---
+
+## INTERN
+
+Can:
+
+* View own tasks
+* Update own task progress
+* Update task status where permitted
+* Submit daily activity
+* View own activity history
+* View mentor feedback
+* View own performance information
+
+Cannot:
+
+* View other interns' private information
+* Create users
+* Assign tasks to other interns
+* Modify mentor/admin data
+
+---
+
+# 5. Permission Matrix
+
+| Action                | Admin |   Mentor |  Intern |
+| --------------------- | ----: | -------: | ------: |
+| Login                 |     ✓ |        ✓ |       ✓ |
+| View own profile      |     ✓ |        ✓ |       ✓ |
+| View all interns      |     ✓ |        — |       — |
+| View assigned interns |     ✓ |        ✓ |       — |
+| Create intern         |     ✓ |        — |       — |
+| Create task           |     ✓ |        ✓ |       — |
+| View task             |     ✓ | Assigned |     Own |
+| Edit task             |     ✓ | Assigned | Limited |
+| Update progress       |     ✓ |        ✓ |     Own |
+| Submit daily activity |     ✓ |        — |     Own |
+| View daily activity   |     ✓ | Assigned |     Own |
+| Give feedback         |     ✓ |        ✓ |       — |
+| View feedback         |     ✓ |        ✓ |     Own |
+| Manage departments    |     ✓ |        — |       — |
+| Manage users          |     ✓ |        — |       — |
+| Manage criteria       |     ✓ |        — |       — |
+
+Every permission must be enforced server-side.
+
+Hiding a button is NOT considered authorization.
+
+---
+
+# 6. Information Architecture
+
+## Intern
+
+```text
+/
+├── dashboard
+├── tasks
+│   ├── [id]
+│   └── ...
+├── activity
+├── performance
+└── profile
+```
+
+## Mentor
+
+```text
+/
+├── dashboard
+├── interns
+│   └── [id]
+├── tasks
+│   └── [id]
+├── activity
+└── performance
+```
+
+## Admin
+
+```text
+/
+├── dashboard
+├── interns
+├── mentors
+├── users
+├── departments
+├── tasks
+└── settings
+```
+
+---
+
+# 7. Route Structure
+
+Use the following route convention.
+
+```text
+/login
+
+/dashboard
+
+/tasks
+/tasks/[taskId]
+
+/activity
+/activity/[activityId]
+
+/performance
+
+/interns
+/interns/[internId]
+
+/users
+/users/[userId]
+
+/mentors
+/mentors/[mentorId]
+
+/departments
+
+/settings
+```
+
+Role-specific access must be enforced in server-side authorization.
+
+---
+
+# 8. Database Schema
+
+Use UUID for primary keys.
+
+Use timestamps in UTC.
+
+Application timezone for display:
+
+```text
+Asia/Jakarta
+```
+
+---
+
+## 8.1 users
+
+```sql
+users
+-----
+id uuid PK
+name varchar(120) NOT NULL
+email varchar(255) UNIQUE NOT NULL
+password_hash text NOT NULL
+role enum('ADMIN', 'MENTOR', 'INTERN') NOT NULL
+avatar_url text NULL
+is_active boolean NOT NULL DEFAULT true
+created_at timestamp NOT NULL
+updated_at timestamp NOT NULL
+```
+
+Indexes:
+
+```text
+users_email_idx
+users_role_idx
+users_active_idx
+```
+
+---
+
+# 9. departments
+
+```sql
+departments
+-----------
+id uuid PK
+name varchar(120) UNIQUE NOT NULL
+description text NULL
+is_active boolean NOT NULL DEFAULT true
+created_at timestamp NOT NULL
+updated_at timestamp NOT NULL
+```
+
+---
+
+# 10. internships
+
+Internship-specific information must not be placed directly into `users`.
+
+```sql
+internships
+-----------
+id uuid PK
+user_id uuid FK users.id UNIQUE NOT NULL
+mentor_id uuid FK users.id NULL
+department_id uuid FK departments.id NULL
+
+start_date date NOT NULL
+end_date date NOT NULL
+
+status enum(
+  'UPCOMING',
+  'ACTIVE',
+  'COMPLETED',
+  'CANCELLED'
+) NOT NULL
+
+created_at timestamp NOT NULL
+updated_at timestamp NOT NULL
+```
+
+Constraints:
+
+```text
+start_date <= end_date
+mentor_id must reference a MENTOR or ADMIN
+user_id must reference an INTERN
+```
+
+---
+
+# 11. tasks
+
+```sql
+tasks
+-----
+id uuid PK
+
+title varchar(200) NOT NULL
+description text NULL
+
+intern_id uuid FK users.id NOT NULL
+created_by uuid FK users.id NOT NULL
+
+status enum(
+  'TODO',
+  'IN_PROGRESS',
+  'BLOCKED',
+  'REVIEW',
+  'COMPLETED'
+) NOT NULL DEFAULT 'TODO'
+
+priority enum(
+  'LOW',
+  'MEDIUM',
+  'HIGH'
+) NOT NULL DEFAULT 'MEDIUM'
+
+progress integer NOT NULL DEFAULT 0
+
+start_date date NULL
+due_date date NULL
+
+completed_at timestamp NULL
+
+created_at timestamp NOT NULL
+updated_at timestamp NOT NULL
+```
+
+Constraints:
+
+```text
+progress >= 0
+progress <= 100
+```
+
+Indexes:
+
+```text
+tasks_intern_id_idx
+tasks_status_idx
+tasks_due_date_idx
+tasks_created_at_idx
+```
+
+---
+
+# 12. daily_activities
+
+One intern should normally have at most one submitted daily activity per date.
+
+```sql
+daily_activities
+---------------
+id uuid PK
+
+intern_id uuid FK users.id NOT NULL
+
+activity_date date NOT NULL
+
+summary text NOT NULL
+progress integer NULL
+
+blocker text NULL
+next_step text NULL
+
+status enum(
+  'DRAFT',
+  'SUBMITTED'
+) NOT NULL DEFAULT 'DRAFT'
+
+submitted_at timestamp NULL
+
+created_at timestamp NOT NULL
+updated_at timestamp NOT NULL
+```
+
+Unique constraint:
+
+```text
+UNIQUE(intern_id, activity_date)
+```
+
+Indexes:
+
+```text
+daily_activities_intern_date_idx
+daily_activities_date_idx
+daily_activities_status_idx
+```
+
+---
+
+# 13. task_activity_logs
+
+Used to create a task timeline.
+
+```sql
+task_activity_logs
+------------------
+id uuid PK
+
+task_id uuid FK tasks.id NOT NULL
+actor_id uuid FK users.id NOT NULL
+
+type enum(
+  'CREATED',
+  'STATUS_CHANGED',
+  'PROGRESS_CHANGED',
+  'COMMENTED',
+  'COMPLETED'
+) NOT NULL
+
+old_value text NULL
+new_value text NULL
+description text NULL
+
+created_at timestamp NOT NULL
+```
+
+Indexes:
+
+```text
+task_activity_logs_task_idx
+task_activity_logs_created_at_idx
+```
+
+---
+
+# 14. feedback
+
+```sql
+feedback
+--------
+id uuid PK
+
+intern_id uuid FK users.id NOT NULL
+task_id uuid FK tasks.id NULL
+
+author_id uuid FK users.id NOT NULL
+
+content text NOT NULL
+
+created_at timestamp NOT NULL
+updated_at timestamp NOT NULL
+```
+
+Indexes:
+
+```text
+feedback_intern_idx
+feedback_task_idx
+feedback_author_idx
+```
+
+---
+
+# 15. Performance Criteria
+
+```sql
+performance_criteria
+--------------------
+id uuid PK
+
+name varchar(100) NOT NULL
+description text NULL
+
+weight integer NOT NULL
+
+is_active boolean NOT NULL DEFAULT true
+
+created_at timestamp NOT NULL
+updated_at timestamp NOT NULL
+```
+
+Example:
+
+```text
+Task Completion     30
+Quality             25
+Initiative          15
+Communication       15
+Problem Solving     15
+```
+
+Total active weight should equal 100.
+
+---
+
+# 16. Performance Reviews
+
+```sql
+performance_reviews
+------------------
+id uuid PK
+
+intern_id uuid FK users.id NOT NULL
+reviewer_id uuid FK users.id NOT NULL
+
+period_start date NOT NULL
+period_end date NOT NULL
+
+status enum(
+  'DRAFT',
+  'FINAL'
+) NOT NULL DEFAULT 'DRAFT'
+
+overall_score numeric(3,2) NULL
+
+summary text NULL
+
+created_at timestamp NOT NULL
+updated_at timestamp NOT NULL
+```
+
+---
+
+# 17. Performance Scores
+
+```sql
+performance_scores
+------------------
+id uuid PK
+
+review_id uuid FK performance_reviews.id NOT NULL
+criterion_id uuid FK performance_criteria.id NOT NULL
+
+score integer NOT NULL
+comment text NULL
+
+created_at timestamp NOT NULL
+updated_at timestamp NOT NULL
+```
+
+Constraint:
+
+```text
+score >= 1
+score <= 5
+```
+
+---
+
+# 18. Relationships
+
+```text
+User
+ │
+ ├── Internship
+ │      ├── Mentor
+ │      └── Department
+ │
+ ├── Tasks
+ │      └── Task Activity Logs
+ │
+ ├── Daily Activities
+ │
+ ├── Feedback
+ │
+ └── Performance Reviews
+          └── Performance Scores
+                   └── Performance Criteria
+```
+
+---
+
+# 19. Dashboard Data Model
+
+The dashboard should NOT execute dozens of individual queries.
+
+Create server-side query functions that aggregate the required data.
+
+Example:
+
+```ts
+getInternDashboard(internId)
+```
+
+returns:
+
+```ts
+{
+  internship: {
+    startDate,
+    endDate,
+    currentDay,
+    totalDays,
+    progressPercentage
+  },
+
+  today: {
+    tasks,
+    completedTasks,
+    totalTasks,
+    progress
+  },
+
+  dailyActivity: {
+    submitted,
+    activity
+  },
+
+  recentFeedback: [],
+
+  blockers: []
+}
+```
+
+---
+
+# 20. Mentor Dashboard
+
+Create:
+
+```ts
+getMentorDashboard(mentorId)
+```
+
+Return:
+
+```ts
+{
+  internCount,
+  activeTasks,
+  blockedTasks,
+  overdueTasks,
+
+  interns: [
+    {
+      id,
+      name,
+      avatarUrl,
+      department,
+      todayProgress,
+      activeTask,
+      taskStatus,
+      dailyActivityStatus,
+      hasBlocker
+    }
+  ]
+}
+```
+
+The dashboard should answer:
+
+1. Who is active?
+2. What are they doing?
+3. What is their progress?
+4. Who is blocked?
+5. Who has not submitted today's activity?
+6. Which tasks are overdue?
+
+---
+
+# 21. Intern Dashboard UI
+
+Use shadcn/ui components.
+
+Mobile layout:
+
+```text
+┌─────────────────────────┐
+│ Good morning, Budi 👋   │
+│ Monday, 28 Sep          │
+│                         │
+│ Internship              │
+│ Day 28 / 91             │
+│ ███████░░░░             │
+│                         │
+│ Today's Progress        │
+│ 72%                     │
+│                         │
+│ ─────────────────────── │
+│                         │
+│ Today's Tasks            │
+│                         │
+│ ┌─────────────────────┐ │
+│ │ Build Login Page    │ │
+│ │ In Progress         │ │
+│ │ ████████░░ 80%      │ │
+│ └─────────────────────┘ │
+│                         │
+│ ┌─────────────────────┐ │
+│ │ API Integration     │ │
+│ │ Blocked             │ │
+│ │ ██████░░░░ 60%      │ │
+│ └─────────────────────┘ │
+│                         │
+│ ─────────────────────── │
+│                         │
+│ Daily Check-in          │
+│ [ Update Activity ]     │
+│                         │
+├─────────────────────────┤
+│ Home Tasks Activity Me  │
+└─────────────────────────┘
+```
+
+---
+
+# 22. Mentor Dashboard UI
+
+Desktop:
+
+```text
+Sidebar
+│
+├── Dashboard
+├── Interns
+├── Tasks
+├── Activity
+└── Performance
+```
+
+Main:
+
+```text
+Good morning
+
+┌────────┐ ┌────────┐ ┌────────┐
+│ 4      │ │ 12     │ │ 2      │
+│ Interns│ │ Tasks  │ │Blocked │
+└────────┘ └────────┘ └────────┘
+
+Today's Activity
+
+Budi
+Build Login Page
+80%
+Updated 09:32
+
+Sinta
+Campaign Research
+60%
+Updated 10:14
+
+Andi
+API Documentation
+100%
+Completed
+```
+
+Mobile:
+
+Cards become single-column.
+
+---
+
+# 23. Task List
+
+Desktop:
+
+```text
+Tasks
+
+[ Search ] [ Status ] [ Priority ]
+
+Task                 Intern     Status       Due
+--------------------------------------------------
+Build Login Page     Budi       In Progress  Sep 30
+API Integration      Budi       Blocked      Sep 29
+Research             Sinta      Review       Oct 01
+```
+
+Mobile:
+
+```text
+Tasks
+
+[ Search ]
+
+┌────────────────────┐
+│ Build Login Page   │
+│ Budi               │
+│                    │
+│ In Progress        │
+│ ████████░░ 80%     │
+│                    │
+│ Due Sep 30         │
+└────────────────────┘
+```
+
+---
+
+# 24. Task Detail
+
+Required sections:
+
+```text
+Header
+Title
+Status
+Progress
+Description
+Metadata
+Checklist (optional future enhancement)
+Activity timeline
+Feedback
+```
+
+Primary action:
+
+```text
+Update Progress
+```
+
+For intern:
+
+```text
+Progress slider/input
+Status
+Comment
+```
+
+---
+
+# 25. Daily Activity UX
+
+The daily activity form must be extremely short.
+
+Required:
+
+```text
+What did you work on?
+```
+
+Optional:
+
+```text
+Progress
+Blocker
+Next step
+```
+
+Example:
+
+```text
+Daily Check-in
+
+What did you work on?
+
+[ Implemented login validation... ]
+
+Progress
+
+[──────●────] 70%
+
+Blocker
+
+[ Waiting for API credentials ]
+
+Tomorrow
+
+[ Finish API integration ]
+
+[ Submit Update ]
+```
+
+Do not require the user to fill every field.
+
+---
+
+# 26. Daily Activity Rules
+
+An intern can:
+
+* Create today's activity
+* Edit today's activity
+* Submit today's activity
+
+After submission:
+
+* Activity remains editable during MVP
+* `updated_at` records changes
+
+Future version may lock submitted activity.
+
+Past dates can be viewed.
+
+Past activities should not be editable by interns unless explicitly enabled.
+
+---
+
+# 27. Today's Activity
+
+The system timezone for business logic is:
+
+```text
+Asia/Jakarta
+```
+
+"Today" must always be calculated consistently using this timezone.
+
+Do not use the browser's local timezone to determine business dates.
+
+---
+
+# 28. Task Progress Rules
+
+Valid range:
+
+```text
+0 - 100
+```
+
+Recommended behavior:
+
+```text
+0-1%       → TODO
+2-99%      → IN_PROGRESS
+100%       → COMPLETED
+```
+
+However, explicit status changes are allowed.
+
+Example:
+
+```text
+Progress 60%
+Status BLOCKED
+```
+
+This is valid.
+
+When setting:
+
+```text
+COMPLETED
+```
+
+automatically:
+
+```text
+progress = 100
+completed_at = current timestamp
+```
+
+When moving away from COMPLETED:
+
+```text
+completed_at = null
+```
+
+---
+
+# 29. Blocker Logic
+
+A task is considered blocked if:
+
+```text
+status === BLOCKED
+```
+
+Dashboard should surface blocked tasks prominently.
+
+Do not infer "blocked" merely from low progress.
+
+---
+
+# 30. Overdue Logic
+
+Task is overdue when:
+
+```text
+due_date < today
+AND status != COMPLETED
+```
+
+Do not store `is_overdue`.
+
+Calculate it dynamically.
+
+---
+
+# 31. Internship Progress
+
+Calculate:
+
+```text
+elapsedDays =
+today - startDate
+
+totalDays =
+endDate - startDate
+
+internshipProgress =
+elapsedDays / totalDays * 100
+```
+
+Clamp to:
+
+```text
+0 - 100
+```
+
+If status is COMPLETED:
+
+```text
+100%
+```
+
+If UPCOMING:
+
+```text
+0%
+```
+
+---
+
+# 32. Feedback UI
+
+Feedback should be contextual.
+
+On task detail:
+
+```text
+Feedback
+
+Mentor
+Today, 14:32
+
+"Please coordinate with backend
+before continuing the integration."
+
+[ Reply ]   // future feature
+```
+
+MVP does not require threaded conversations.
+
+---
+
+# 33. Performance UI
+
+Performance should not dominate the application.
+
+Intern:
+
+```text
+Performance
+
+Current Period
+September 2026
+
+Task Completion
+4 / 5
+
+Quality
+4 / 5
+
+Initiative
+3 / 5
+
+Communication
+4 / 5
+
+Problem Solving
+3 / 5
+```
+
+Mentor:
+
+```text
+Performance Review
+
+Period
+Sep 1 - Sep 30
+
+Task Completion
+[ 4 ]
+
+Comment
+Consistently completed assigned tasks.
+
+Quality
+[ 4 ]
+
+Comment
+...
+```
+
+---
+
+# 34. Performance Calculation
+
+Weighted score:
+
+```text
+weightedScore =
+sum(
+  criterionScore / 5 * criterionWeight
+)
+```
+
+Example:
+
+```text
+Task Completion
+4 / 5 * 30 = 24
+
+Quality
+4 / 5 * 25 = 20
+
+Initiative
+3 / 5 * 15 = 9
+
+Communication
+4 / 5 * 15 = 12
+
+Problem Solving
+3 / 5 * 15 = 9
+
+Total = 74 / 100
+```
+
+Display:
+
+```text
+74 / 100
+```
+
+Do not display a letter grade in MVP.
+
+---
+
+# 35. Important Performance Rule
+
+Performance scores must always be associated with:
+
+```text
+criterion
+review period
+reviewer
+comment
+```
+
+Avoid anonymous scores.
+
+A reviewer should be able to explain a score.
+
+---
+
+# 36. Server Actions
+
+Recommended mutation structure:
+
+```text
+src/actions/
+
+auth.ts
+tasks.ts
+activities.ts
+feedback.ts
+performance.ts
+users.ts
+internships.ts
+departments.ts
+```
+
+Example:
+
+```ts
+createTask(input)
+updateTask(input)
+updateTaskProgress(input)
+
+createDailyActivity(input)
+updateDailyActivity(input)
+submitDailyActivity(input)
+
+createFeedback(input)
+
+createPerformanceReview(input)
+updatePerformanceScore(input)
+finalizePerformanceReview(input)
+```
+
+Every action must:
+
+1. Authenticate
+2. Validate input with Zod
+3. Authorize role/resource ownership
+4. Execute database operation
+5. Return typed result
+
+---
+
+# 37. Query Layer
+
+Do not put complex database queries directly inside page components.
+
+Structure:
+
+```text
+src/server/queries/
+
+dashboard.ts
+tasks.ts
+activities.ts
+interns.ts
+users.ts
+performance.ts
+```
+
+Example:
+
+```ts
+getTodayTasksForIntern()
+getDailyActivitiesForIntern()
+getMentorInterns()
+getInternDetail()
+getPerformanceReview()
+```
+
+---
+
+# 38. Suggested Project Structure
+
+```text
+src/
+├── app/
+│   ├── (auth)/
+│   │   └── login/
+│   │
+│   ├── (dashboard)/
+│   │   ├── dashboard/
+│   │   ├── tasks/
+│   │   ├── activity/
+│   │   ├── performance/
+│   │   ├── interns/
+│   │   ├── users/
+│   │   ├── mentors/
+│   │   ├── departments/
+│   │   └── settings/
+│   │
+│   ├── api/
+│   │
+│   ├── layout.tsx
+│   └── page.tsx
+│
+├── actions/
+│   ├── tasks.ts
+│   ├── activities.ts
+│   ├── feedback.ts
+│   ├── performance.ts
+│   ├── users.ts
+│   ├── internships.ts
+│   └── departments.ts
+│
+├── components/
+│   ├── ui/
+│   ├── layout/
+│   ├── dashboard/
+│   ├── tasks/
+│   ├── activities/
+│   ├── interns/
+│   └── performance/
+│
+├── db/
+│   ├── index.ts
+│   ├── schema/
+│   │   ├── users.ts
+│   │   ├── departments.ts
+│   │   ├── internships.ts
+│   │   ├── tasks.ts
+│   │   ├── activities.ts
+│   │   ├── feedback.ts
+│   │   └── performance.ts
+│   └── seed.ts
+│
+├── server/
+│   ├── queries/
+│   ├── auth/
+│   └── permissions/
+│
+├── lib/
+│   ├── auth.ts
+│   ├── validation/
+│   ├── date.ts
+│   ├── utils.ts
+│   └── constants.ts
+│
+└── types/
+```
+
+---
+
+# 39. Component Architecture
+
+Reusable components should include:
+
+```text
+AppShell
+MobileBottomNav
+DesktopSidebar
+PageHeader
+
+StatCard
+ProgressBar
+StatusBadge
+PriorityBadge
+EmptyState
+LoadingSkeleton
+
+TaskCard
+TaskList
+TaskProgress
+TaskTimeline
+TaskForm
+
+DailyActivityCard
+DailyActivityForm
+ActivityTimeline
+
+InternCard
+InternList
+InternProgress
+
+FeedbackCard
+FeedbackForm
+
+PerformanceCard
+PerformanceCriteriaForm
+PerformanceReviewForm
+```
+
+Do not create a separate component for every small piece of markup.
+
+---
+
+# 40. shadcn/ui Requirements
+
+Use shadcn/ui wherever an appropriate component exists.
+
+Expected components:
+
+```text
+Button
+Card
+Badge
+Avatar
+Progress
+Input
+Textarea
+Select
+Dialog
+Sheet
+DropdownMenu
+Tabs
+Calendar
+Popover
+Table
+Skeleton
+Separator
+Alert
+Toast/Sonner
+Slider
+```
+
+Do not introduce Material UI, Ant Design, Chakra UI, Bootstrap, or another UI framework.
+
+---
+
+# 41. Design System
+
+Use shadcn defaults as the baseline.
+
+Prefer:
+
+```text
+rounded-md
+border
+bg-background
+bg-card
+text-foreground
+text-muted-foreground
+```
+
+Avoid:
+
+* excessive shadows
+* gradients
+* huge typography
+* glassmorphism
+* excessive animation
+* animated counters
+* decorative charts
+
+The UI should look like a clean modern internal tool.
+
+---
+
+# 42. Mobile Navigation
+
+Use fixed bottom navigation on mobile.
+
+Intern:
+
+```text
+Home
+Tasks
+Activity
+Me
+```
+
+Mentor:
+
+```text
+Home
+Interns
+Tasks
+Reviews
+Me
+```
+
+Admin:
+
+```text
+Home
+Interns
+Tasks
+More
+```
+
+"More" opens a mobile sheet containing:
+
+```text
+Users
+Mentors
+Departments
+Settings
+```
+
+---
+
+# 43. Desktop Navigation
+
+Use a sidebar.
+
+Sidebar must be collapsible.
+
+Example:
+
+```text
+┌─────────────────────┐
+│ Intern Matrix       │
+│                     │
+│ 🏠 Dashboard        │
+│ 👥 Interns          │
+│ ✓ Tasks             │
+│ ◷ Activity          │
+│ ⭐ Performance      │
+│                     │
+│                     │
+│ ⚙ Settings          │
+└─────────────────────┘
+```
+
+---
+
+# 44. Loading States
+
+Every data-heavy page needs a loading state.
+
+Use:
+
+```text
+Skeleton
+```
+
+not:
+
+```text
+Loading...
+```
+
+Example:
+
+```text
+┌────────────────────┐
+│ ███████████        │
+│ ██████             │
+│                    │
+│ ███████████████    │
+└────────────────────┘
+```
+
+---
+
+# 45. Empty States
+
+Example:
+
+```text
+No tasks yet
+
+Your mentor hasn't assigned
+any tasks yet.
+
+```
+
+CTA should only be shown if the user has permission.
+
+---
+
+# 46. Error Handling
+
+All mutations must return user-friendly errors.
+
+Examples:
+
+```text
+Unable to save task.
+Please try again.
+```
+
+Never expose:
+
+* SQL errors
+* stack traces
+* database connection strings
+* internal IDs unnecessarily
+
+Log technical errors server-side.
+
+---
+
+# 47. Validation
+
+Examples:
+
+### Task
+
+```text
+title:
+required
+max 200 characters
+
+description:
+max 5000 characters
+
+progress:
+integer 0-100
+
+dueDate:
+must not be before startDate
+```
+
+### Daily Activity
+
+```text
+summary:
+required
+min 5 characters
+
+blocker:
+optional
+max 2000 characters
+
+nextStep:
+optional
+max 2000 characters
+```
+
+### Feedback
+
+```text
+content:
+required
+min 2 characters
+max 5000 characters
+```
+
+---
+
+# 48. Authentication Flow
+
+```text
+/login
+    ↓
+Authenticate
+    ↓
+Create session
+    ↓
+Get current user
+    ↓
+Check role
+    ↓
+Redirect /dashboard
+```
+
+If unauthenticated:
+
+```text
+protected route → /login
+```
+
+If authenticated but unauthorized:
+
+```text
+403 page
+```
+
+---
+
+# 49. Authorization Architecture
+
+Create:
+
+```ts
+requireAuth()
+requireRole()
+requireMentorAccess()
+requireInternOwnership()
+```
+
+Example:
+
+```ts
+const user = await requireAuth();
+
+await requireMentorAccess({
+  mentorId: user.id,
+  internId
+});
+```
+
+Do not rely only on middleware.
+
+Resource-level authorization must happen close to the database operation.
+
+---
+
+# 50. Security Requirements
+
+Required:
+
+* Password hashing
+* Secure session cookies
+* HTTP-only cookies
+* SameSite protection
+* CSRF protection through framework/session strategy
+* Server-side authorization
+* Zod input validation
+* SQL parameterization through ORM
+* No secrets committed to repository
+* Production environment variables
+* Rate limiting on login
+
+Never expose:
+
+```text
+DATABASE_URL
+AUTH_SECRET
+password_hash
+```
+
+to client components.
+
+---
+
+# 51. Auditability
+
+The following actions should create activity records:
+
+```text
+Task created
+Task status changed
+Task progress changed
+Task completed
+Daily activity submitted
+Feedback created
+Performance review finalized
+```
+
+This is important because the application's long-term value is its activity history.
+
+---
+
+# 52. Seed Data
+
+Create development seed data.
+
+## Users
+
+```text
+Admin
+admin@example.com
+
+Mentor
+mentor@example.com
+
+Intern
+budi@example.com
+
+Intern
+sinta@example.com
+```
+
+Use clearly documented development passwords.
+
+Never use these credentials in production.
+
+---
+
+## Department
+
+```text
+Engineering
+Marketing
+Design
+```
+
+---
+
+## Example tasks
+
+```text
+Build Login Page
+API Integration
+Prepare API Documentation
+Market Research
+Landing Page Improvement
+```
+
+---
+
+## Example activities
+
+Create several activities for previous dates.
+
+Include:
+
+* completed activity
+* active task
+* blocked task
+* missing daily activity
+
+This allows the dashboard to be tested realistically.
+
+---
+
+# 53. Seed Command
+
+Provide:
+
+```bash
+npm run db:seed
+```
+
+Also provide:
+
+```bash
+npm run db:generate
+npm run db:migrate
+```
+
+---
+
+# 54. Environment Variables
+
+`.env.example`
+
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/intern_matrix
+
+AUTH_SECRET=replace-with-secure-secret
+
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+APP_TIMEZONE=Asia/Jakarta
+```
+
+No secret should be hardcoded.
+
+---
+
+# 55. Docker
+
+Application must run with Docker.
+
+Expected:
+
+```text
+Dockerfile
+.dockerignore
+docker-compose.yml
+```
+
+Production application:
+
+```text
+Next.js container
+        │
+        ▼
+PostgreSQL
+```
+
+For Coolify, PostgreSQL may be provisioned separately as a managed/internal service.
+
+---
+
+# 56. Coolify Deployment
+
+Deployment requirements:
+
+```text
+Repository
+   ↓
+Coolify
+   ↓
+Build Docker image
+   ↓
+Deploy application
+   ↓
+Connect DATABASE_URL
+```
+
+Environment variables must be configured through Coolify.
+
+Do not commit `.env`.
+
+---
+
+# 57. Health Check
+
+Implement:
+
+```text
+/api/health
+```
+
+Response:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+The health endpoint should verify basic application availability.
+
+A deeper database health check may be implemented if desired, but should not expose database details.
+
+---
+
+# 58. Logging
+
+Production logs should include:
+
+```text
+timestamp
+level
+request/action
+user id where appropriate
+error identifier
+```
+
+Never log:
+
+```text
+password
+session token
+AUTH_SECRET
+DATABASE_URL
+```
+
+---
+
+# 59. Performance Requirements
+
+Target:
+
+### Initial page load
+
+Fast enough for normal mobile 4G usage.
+
+### Dashboard
+
+Avoid:
+
+```text
+1 query per task
+1 query per intern
+1 query per feedback
+```
+
+Use aggregation/batched queries.
+
+### Database
+
+All common foreign keys must have indexes.
+
+---
+
+# 60. Accessibility
+
+Minimum requirements:
+
+* Keyboard navigation
+* Visible focus state
+* Proper labels
+* Accessible form errors
+* Semantic HTML
+* Buttons must have accessible names
+* Do not rely on color alone to communicate status
+
+Example:
+
+Do not use only:
+
+```text
+🔴
+```
+
+Use:
+
+```text
+Blocked
+```
+
+with optional color.
+
+---
+
+# 61. Responsive Breakpoints
+
+Use Tailwind defaults unless there is a strong reason otherwise.
+
+Primary breakpoints:
+
+```text
+mobile: < 768px
+tablet: >= 768px
+desktop: >= 1024px
+large: >= 1280px
+```
+
+---
+
+# 62. Date Handling
+
+All timestamps:
+
+```text
+UTC
+```
+
+All business-date calculations:
+
+```text
+Asia/Jakarta
+```
+
+Use a single date utility module.
+
+Do not scatter:
+
+```ts
+new Date()
+```
+
+and timezone conversions throughout the application.
+
+Create utilities such as:
+
+```ts
+getTodayJakarta()
+formatDate()
+formatDateTime()
+isOverdue()
+calculateInternshipProgress()
+```
+
+---
+
+# 63. API / Route Handlers
+
+The application is primarily server-action based.
+
+Only expose Route Handlers where external access is genuinely useful.
+
+Required:
+
+```text
+GET /api/health
+```
+
+Optional future:
+
+```text
+GET /api/tasks
+GET /api/interns
+GET /api/activities
+```
+
+Do not build a full public REST API for MVP.
+
+---
+
+# 64. Search and Filtering
+
+Task list must support:
+
+```text
+Search
+Status
+Priority
+Intern
+Due date
+```
+
+Intern list:
+
+```text
+Search
+Department
+Status
+Mentor
+```
+
+Activity:
+
+```text
+Date
+Intern
+```
+
+For mobile, filters should open in a Sheet rather than consuming permanent screen space.
+
+---
+
+# 65. Pagination
+
+Do not load unlimited records.
+
+Tasks:
+
+```text
+20-30 records/page
+```
+
+Activities:
+
+```text
+20 records/page
+```
+
+Interns:
+
+```text
+20 records/page
+```
+
+Cursor pagination can be introduced later.
+
+Offset pagination is acceptable for MVP.
+
+---
+
+# 66. Sorting
+
+Default task sorting:
+
+```text
+1. Blocked
+2. Overdue
+3. In Progress
+4. Todo
+5. Completed
+```
+
+Within the same status:
+
+```text
+due_date ASC
+```
+
+Do not treat this as a performance ranking of interns.
+
+It is purely an operational task ordering.
+
+---
+
+# 67. Dashboard Metrics
+
+Intern dashboard:
+
+```text
+Today's Progress
+Tasks Today
+Completed Tasks
+Active Tasks
+Blocked Tasks
+```
+
+Mentor dashboard:
+
+```text
+Active Interns
+Active Tasks
+Blocked Tasks
+Overdue Tasks
+Today's Updates
+```
+
+Avoid vanity metrics.
+
+---
+
+# 68. No Charts in MVP
+
+Do not implement large charts initially.
+
+The application is primarily operational.
+
+Cards, progress bars, lists, and timelines are sufficient.
+
+Charts may be introduced later if actual usage demonstrates a need.
+
+---
+
+# 69. Acceptance Criteria — Authentication
+
+### AC-AUTH-001
+
+Given a valid user:
+
+When correct credentials are submitted:
+
+Then the user is authenticated and redirected to `/dashboard`.
+
+### AC-AUTH-002
+
+Given invalid credentials:
+
+Then login fails with a generic error.
+
+### AC-AUTH-003
+
+Unauthenticated users cannot access protected routes.
+
+### AC-AUTH-004
+
+An INTERN cannot access admin pages.
+
+### AC-AUTH-005
+
+A MENTOR cannot access users/departments administration.
+
+---
+
+# 70. Acceptance Criteria — Tasks
+
+### AC-TASK-001
+
+Mentor can create a task for an assigned intern.
+
+### AC-TASK-002
+
+Intern can view own tasks.
+
+### AC-TASK-003
+
+Intern can update own task progress.
+
+### AC-TASK-004
+
+Progress cannot be below 0 or above 100.
+
+### AC-TASK-005
+
+Setting task to COMPLETED sets progress to 100.
+
+### AC-TASK-006
+
+Blocked tasks appear in mentor dashboard.
+
+### AC-TASK-007
+
+Overdue tasks are detected dynamically.
+
+### AC-TASK-008
+
+Task changes create activity logs.
+
+---
+
+# 71. Acceptance Criteria — Daily Activity
+
+### AC-ACT-001
+
+Intern can create today's daily activity.
+
+### AC-ACT-002
+
+Intern cannot create two activities for the same date.
+
+### AC-ACT-003
+
+Intern can edit today's activity.
+
+### AC-ACT-004
+
+Mentor can view assigned interns' activities.
+
+### AC-ACT-005
+
+Daily activity appears in activity history.
+
+### AC-ACT-006
+
+Dashboard clearly indicates whether today's activity has been submitted.
+
+---
+
+# 72. Acceptance Criteria — Feedback
+
+### AC-FEEDBACK-001
+
+Mentor can add feedback to assigned intern.
+
+### AC-FEEDBACK-002
+
+Mentor can attach feedback to a task.
+
+### AC-FEEDBACK-003
+
+Intern can view feedback on own task.
+
+### AC-FEEDBACK-004
+
+Unauthorized users cannot read private feedback.
+
+---
+
+# 73. Acceptance Criteria — Performance
+
+### AC-PERF-001
+
+Admin can create/edit performance criteria.
+
+### AC-PERF-002
+
+Performance criteria weights must total 100 for an active review configuration.
+
+### AC-PERF-003
+
+Mentor can create a performance review for assigned intern.
+
+### AC-PERF-004
+
+Scores must be between 1 and 5.
+
+### AC-PERF-005
+
+Every score can contain an optional comment.
+
+### AC-PERF-006
+
+Finalized review becomes read-only.
+
+### AC-PERF-007
+
+Weighted score is calculated server-side.
+
+---
+
+# 74. Acceptance Criteria — Mobile
+
+### AC-MOBILE-001
+
+Application is usable at 360px width.
+
+### AC-MOBILE-002
+
+No horizontal scrolling on normal pages.
+
+### AC-MOBILE-003
+
+Primary navigation is reachable with one thumb.
+
+### AC-MOBILE-004
+
+Daily activity can be submitted comfortably from mobile.
+
+### AC-MOBILE-005
+
+Task progress can be updated from mobile.
+
+### AC-MOBILE-006
+
+Tables transform into cards on small screens.
+
+---
+
+# 75. Acceptance Criteria — Performance
+
+### AC-PERF-APP-001
+
+Dashboard does not perform N+1 queries.
+
+### AC-PERF-APP-002
+
+Large lists are paginated.
+
+### AC-PERF-APP-003
+
+Images are optimized.
+
+### AC-PERF-APP-004
+
+No unnecessary client-side state management library.
+
+### AC-PERF-APP-005
+
+Production build succeeds with:
+
+```bash
+npm run build
+```
+
+---
+
+# 76. Definition of Done
+
+A feature is considered complete only when:
+
+```text
+[ ] UI implemented
+[ ] Mobile responsive
+[ ] Server-side validation
+[ ] Authorization implemented
+[ ] Database migration created
+[ ] Loading state
+[ ] Empty state
+[ ] Error state
+[ ] Success feedback
+[ ] Accessibility checked
+[ ] No TypeScript errors
+[ ] No ESLint errors
+[ ] Tested with seed data
+```
+
+---
+
+# 77. Testing Strategy
+
+Minimum:
+
+```text
+Unit tests
+Integration tests
+E2E tests
+```
+
+Prioritize testing:
+
+```text
+Authentication
+Authorization
+Task ownership
+Daily activity uniqueness
+Progress validation
+Performance calculation
+Overdue calculation
+Timezone handling
+```
+
+---
+
+# 78. Critical Test Cases
+
+## Authorization
+
+Test:
+
+```text
+Intern A attempts to access Intern B task
+→ DENIED
+```
+
+```text
+Mentor A attempts to access Intern B
+→ DENIED
+```
+
+unless Intern B is assigned to Mentor A.
+
+---
+
+## Daily Activity
+
+Test:
+
+```text
+Intern submits activity for Sep 28
+Intern submits another activity for Sep 28
+→ DENIED
+```
+
+---
+
+## Progress
+
+```text
+progress = -1
+→ validation error
+```
+
+```text
+progress = 101
+→ validation error
+```
+
+```text
+status = COMPLETED
+→ progress = 100
+```
+
+---
+
+## Overdue
+
+```text
+dueDate = yesterday
+status = IN_PROGRESS
+
+→ overdue = true
+```
+
+```text
+dueDate = yesterday
+status = COMPLETED
+
+→ overdue = false
+```
+
+---
+
+# 79. MVP Exclusions
+
+Do NOT implement these in MVP:
+
+```text
+Attendance
+Payroll
+Leave management
+Recruitment
+Employee HR records
+Chat
+Real-time WebSocket
+File storage
+Video upload
+AI evaluation
+AI-generated scores
+Email campaign system
+Slack integration
+WhatsApp integration
+Push notifications
+Complex analytics
+Public API
+Multi-company tenancy
+```
+
+These create unnecessary complexity before the core workflow is validated.
+
+---
+
+# 80. Phase 2
+
+After MVP usage is validated:
+
+```text
+Weekly review
+Performance history
+Notifications
+Reminder
+Export Excel
+PDF report
+Advanced analytics
+Goal/KPI
+```
+
+---
+
+# 81. Phase 3
+
+Potential future:
+
+```text
+AI weekly summary
+AI activity summarization
+Slack/Teams integration
+Email reminders
+Internship certificate generation
+Company-wide analytics
+```
+
+AI must never automatically determine an intern's performance score.
+
+It can summarize evidence, while the human mentor remains responsible for evaluation.
+
+---
+
+# 82. Development Order
+
+AI coding agent should implement in this exact order.
+
+## Step 1 — Project Bootstrap
+
+Create:
+
+```text
+Next.js
+TypeScript
+Tailwind
+shadcn/ui
+Drizzle
+PostgreSQL
+Zod
+Auth
+```
+
+Verify:
+
+```bash
+npm run build
+```
+
+---
+
+## Step 2 — Database
+
+Implement:
+
+```text
+users
+departments
+internships
+tasks
+daily_activities
+task_activity_logs
+feedback
+performance_criteria
+performance_reviews
+performance_scores
+```
+
+Create migration.
+
+---
+
+## Step 3 — Authentication
+
+Implement:
+
+```text
+/login
+session
+role
+protected routes
+authorization helpers
+```
+
+---
+
+## Step 4 — Seed
+
+Implement:
+
+```bash
+npm run db:seed
+```
+
+Seed:
+
+```text
+1 admin
+2 mentors
+4 interns
+3 departments
+multiple tasks
+multiple activities
+feedback
+```
+
+---
+
+## Step 5 — Application Shell
+
+Implement:
+
+```text
+Desktop Sidebar
+Mobile Bottom Navigation
+Header
+User Menu
+Responsive layout
+```
+
+---
+
+## Step 6 — Intern Workflow
+
+Implement:
+
+```text
+Intern Dashboard
+Task List
+Task Detail
+Progress Update
+Daily Activity
+Activity History
+Feedback
+```
+
+This is the most important workflow.
+
+---
+
+## Step 7 — Mentor Workflow
+
+Implement:
+
+```text
+Mentor Dashboard
+Intern List
+Intern Detail
+Task Assignment
+Activity Monitoring
+Feedback
+```
+
+---
+
+## Step 8 — Admin
+
+Implement:
+
+```text
+Users
+Interns
+Mentors
+Departments
+Performance Criteria
+```
+
+---
+
+## Step 9 — Performance
+
+Implement:
+
+```text
+Performance Review
+Criteria
+Scores
+Weighted Calculation
+Finalization
+History
+```
+
+---
+
+## Step 10 — Production Hardening
+
+Implement:
+
+```text
+Error handling
+Loading states
+Empty states
+Security
+Rate limiting
+Health endpoint
+Logging
+Docker
+Production build
+```
+
+---
+
+# 83. Required npm Scripts
+
+Expected:
+
+```json
+{
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "eslint .",
+  "typecheck": "tsc --noEmit",
+  "db:generate": "drizzle-kit generate",
+  "db:migrate": "drizzle-kit migrate",
+  "db:seed": "tsx src/db/seed.ts"
+}
+```
+
+Add test scripts when test framework is configured.
+
+---
+
+# 84. AI Coding Agent Rules
+
+The coding agent MUST follow these rules.
+
+### Rule 1
+
+Do not introduce a new dependency unless necessary.
+
+### Rule 2
+
+Prefer server components.
+
+### Rule 3
+
+Use Server Actions for application mutations.
+
+### Rule 4
+
+Do not duplicate business logic between client and server.
+
+### Rule 5
+
+All authorization must be server-side.
+
+### Rule 6
+
+All database access must go through the server.
+
+### Rule 7
+
+Use Zod for input validation.
+
+### Rule 8
+
+Use shadcn/ui rather than building basic UI primitives from scratch.
+
+### Rule 9
+
+Mobile must be treated as the primary design target.
+
+### Rule 10
+
+Do not implement excluded features.
+
+### Rule 11
+
+Do not over-engineer the architecture.
+
+### Rule 12
+
+Every completed feature must pass:
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
+
+---
+
+# 85. Suggested Coding-Agent Prompt
+
+The following can be given directly to an AI coding agent:
+
+---
+
+## BUILD INSTRUCTION
+
+You are implementing an internal application called **Internship Performance Matrix**.
+
+Build the application according to this technical specification.
+
+### Technology
+
+Use:
+
+* Next.js App Router
+* TypeScript
+* Tailwind CSS
+* shadcn/ui
+* Lucide React
+* PostgreSQL
+* Drizzle ORM
+* Zod
+* Auth.js
+* Docker
+
+### Primary UX
+
+Mobile-first.
+
+The application must be fast, clean, minimal, and responsive.
+
+Use shadcn/ui as the visual foundation.
+
+Do not introduce Material UI, Ant Design, Bootstrap, or another UI framework.
+
+### Core workflow
+
+The most important workflow is:
+
+```text
+Mentor creates task
+        ↓
+Intern sees task
+        ↓
+Intern updates progress
+        ↓
+Intern submits daily activity
+        ↓
+Mentor sees today's activity
+        ↓
+Mentor gives feedback
+        ↓
+Task is completed
+        ↓
+Activity becomes evidence for performance review
+```
+
+Do not optimize the implementation around performance scoring first.
+
+Optimize it around task/activity tracking.
+
+### Roles
+
+Implement:
+
+```text
+ADMIN
+MENTOR
+INTERN
+```
+
+Implement server-side RBAC and resource-level authorization.
+
+### Database
+
+Implement all tables specified in this document.
+
+Use UUID primary keys.
+
+Use migrations.
+
+Add appropriate indexes.
+
+### Timezone
+
+Business timezone:
+
+```text
+Asia/Jakarta
+```
+
+Store timestamps consistently in UTC.
+
+Convert to Asia/Jakarta for business-date calculations and display.
+
+### UI
+
+Mobile navigation:
+
+```text
+Home
+Tasks
+Activity
+Me
+```
+
+for interns.
+
+Mentors:
+
+```text
+Home
+Interns
+Tasks
+Reviews
+Me
+```
+
+Desktop uses a sidebar.
+
+### Required MVP
+
+Implement:
+
+1. Authentication
+2. Role-based access
+3. Intern management
+4. Mentor assignment
+5. Task management
+6. Task progress
+7. Task activity timeline
+8. Daily activity
+9. Activity history
+10. Mentor dashboard
+11. Intern dashboard
+12. Feedback
+13. Basic performance review
+14. Admin configuration
+15. Seed data
+16. Docker deployment
+
+### Important
+
+Do not implement:
+
+* attendance
+* payroll
+* chat
+* WhatsApp
+* Slack
+* AI scoring
+* real-time WebSocket
+* file upload
+* multi-tenant architecture
+
+unless explicitly requested later.
+
+### Quality bar
+
+Before considering the project complete:
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
+
+must pass.
+
+The application must work at 360px width.
+
+There must be no horizontal scrolling on normal pages.
+
+All protected actions must perform server-side authorization.
+
+All forms must validate with Zod.
+
+All database mutations must be performed server-side.
+
+---
+
+# 86. Final MVP Definition
+
+The MVP is successful when a real mentor can perform this workflow entirely from the application:
+
+```text
+Login
+ ↓
+See interns
+ ↓
+Open Budi
+ ↓
+Create "Build Login Page"
+ ↓
+Budi logs in
+ ↓
+Budi sees the task
+ ↓
+Budi updates progress to 60%
+ ↓
+Budi submits today's activity
+ ↓
+Mentor sees:
+   "Budi is working on Login Page"
+   "Progress 60%"
+   "No blocker"
+ ↓
+Mentor gives feedback
+ ↓
+Budi sees feedback
+ ↓
+Budi completes task
+ ↓
+Mentor later uses the accumulated evidence
+for a performance review
+```
+
+If this workflow works smoothly on a phone, the MVP has achieved its primary objective.
