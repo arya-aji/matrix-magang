@@ -3,10 +3,14 @@
 set -e
 
 if [ -n "$DATABASE_URL" ]; then
-  echo "[entrypoint] applying database migrations..."
-  if ! node ./db/migrate.mjs; then
-    echo "[entrypoint] migrations failed — refusing to start with an unmigrated schema"
-    exit 1
+  if [ "$RUN_MIGRATE_ON_START" = "false" ] || [ "$RUN_MIGRATE_ON_START" = "0" ]; then
+    echo "[entrypoint] skipping migrations (RUN_MIGRATE_ON_START=$RUN_MIGRATE_ON_START)"
+  else
+    echo "[entrypoint] applying database migrations..."
+    if ! node ./db/migrate.mjs; then
+      echo "[entrypoint] migrations failed — refusing to start with an unmigrated schema"
+      exit 1
+    fi
   fi
 
   if [ "$RUN_SEED_ON_START" = "true" ] || [ "$RUN_SEED_ON_START" = "1" ]; then

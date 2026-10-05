@@ -1,3 +1,14 @@
+# LOCAL DEVELOPMENT ONLY.
+#
+# For production on Coolify, do NOT deploy this compose file. Deploy the app from
+# the Dockerfile and connect it to a separate Coolify PostgreSQL resource (which
+# has its own persistent volume). Compose volumes can be renamed/recreated when
+# the Coolify resource is recreated, which makes the database appear "lost".
+#
+# `name: inma` pins the compose project name so the named volume keeps a stable
+# name (`inma_inma-db-data`) across local re-creations.
+name: inma
+
 services:
   db:
     image: postgres:17-alpine

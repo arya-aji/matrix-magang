@@ -41,6 +41,11 @@ dan tidak perlu mengekspos database ke internet.
 
 Pastikan juga port database **tidak** di-publish publik di Production.
 
+> ⚠️ **Penting untuk data live:** database ini adalah satu-satunya tempat data
+> disimpan. Jangan pernah menaruh PostgreSQL di dalam container aplikasi, dan
+> jangan deploy `docker-compose.yml` repo ini ke Coolify untuk produksi. Lihat
+> [§8b Persistensi data](#8b-persistensi-data--kenapa-database-bisa-hilang-saat-redeploy).
+
 ---
 
 ## 3. Buat resource aplikasi
@@ -71,10 +76,11 @@ nilai rahasia sebagai **secret** (kecuali yang diawali `NEXT_PUBLIC_`).
 | `APP_TIMEZONE` | `Asia/Jakarta` |
 | `NEXT_PUBLIC_APP_URL` | URL publik app, mis. `https://inma.domain.com` |
 
-### Untuk seed (digunakan saat kontainer start)
+### Migrasi & seed (dijalankan saat kontainer start)
 
 | Variabel | Default | Catatan |
 | -------- | ------- | ------- |
+| `RUN_MIGRATE_ON_START` | `true` | `true` saat deploy pertama; set **`false`** setelah skema live agar redeploy tidak pernah mengubah skema |
 | `RUN_SEED_ON_START` | `false` | Set `true` pada deploy pertama, lalu kembalikan ke `false` |
 | `SEED_ADMIN_EMAIL` | `admin@example.com` | Email login admin |
 | `SEED_ADMIN_NAME` | `Administrator` | |
@@ -175,11 +181,66 @@ selanjutnya dilakukan dari UI **Users**.
 Setiap kali kode baru di-push:
 
 1. Klik **Deploy** (atau aktifkan **Auto Deploy** via webhook Git).
-2. Migrasi baru otomatis diterapkan oleh entrypoint.
+2. Migrasi diterapkan oleh entrypoint **hanya jika `RUN_MIGRATE_ON_START` bukan `false`**.
 3. `RUN_SEED_ON_START=false` → seed tidak jalan (aman, data tidak tersentuh).
+4. Setelah skema live, set **`RUN_MIGRATE_ON_START=false`**. Dengan begitu redeploy hanya
+   menukar container aplikasi; **skema dan data tidak tersentuh sama sekali**.
 
 **Seed tidak pernah menghapus data domain.** Ia hanya membuat yang belum ada dan
 memperbarui nama/role/penempatan. Password akun yang sudah ada **tidak** ditimpa.
+
+---
+
+## 8b. Persistensi data — kenapa database bisa hilang saat redeploy
+
+Aplikasi **tidak punya kode yang menghapus database**. Kalau data hilang setiap
+redeploy, hampir selalu penyebabnya adalah **tempat database disimpan**, bukan kode.
+
+### Penyebab paling umum
+
+| Penyebab | Kenapa hilang | Solusi |
+| -------- | ------------- | ------ |
+| Database dibuat **di dalam** container aplikasi (atau volume tidak persisten) | Container dibangun ulang saat deploy → data ikut hilang | Pakai **resource Database PostgreSQL Coolify** terpisah |
+| Deploy memakai `docker-compose.yml` repo ini di Coolify | Volume compose diberi prefix nama project; saat resource dibuat ulang, prefix berubah → dianggap volume baru (kosong) | **Jangan** pakai compose untuk produksi; pakai Dockerfile app + Database resource |
+| Mengaktifkan "delete volumes" / `docker compose down -v` saat deploy | Volume dihapus | Matikan opsi hapus volume; jangan `-v` |
+| `RUN_MIGRATE_ON_START=true` terus-menerus | Bukan penghapus data, tapi skema bisa berubah tiap deploy | Set `false` setelah skema live |
+
+### Arsitektur yang benar (dan aman)
+
+```
+[Coolify Database: PostgreSQL 17]  ← volume persisten, TIDAK ikut dibangun ulang
+            ▲  (URL internal)
+            │
+[Coolify Application: image dari Dockerfile]  ← bebas redeploy kapan saja
+```
+
+1. Database **dibuat sekali** sebagai resource Coolify (langkah 2). Punya volume
+   sendiri, terpisah dari aplikasi.
+2. `DATABASE_URL` aplikasi menunjuk ke resource database itu (URL internal).
+3. Redeploy/update aplikasi hanya mengganti image app. Database tidak disentuh.
+4. `RUN_MIGRATE_ON_START=false` setelah skema live → deploy berikutnya dijamin
+   tidak menyentuh skema.
+
+### Aktifkan backup (wajib untuk data live)
+
+- Coolify → resource **Database** → **Backups**: aktifkan backup terjadwal ke S3
+  (atau disk). Ini jaring pengaman utama.
+- Backup manual dari tab **Terminal** database:
+
+  ```sh
+  pg_dump -U postgres -d <nama_db> -f /tmp/inma_backup.sql
+  ```
+
+- Restore:
+
+  ```sh
+  psql -U postgres -d <nama_db> -f /tmp/inma_backup.sql
+  ```
+
+### Cara cek volume database persisten
+
+Coolify → resource **Database** → tab **Storages/Volumes**. Pastikan ada volume
+yang ter-mount ke `/var/lib/postgresql/data` dan **bukan** bertipe ephemeral.
 
 ---
 

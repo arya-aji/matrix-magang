@@ -31,9 +31,9 @@ export function DesktopSidebar({
       <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-3">
         <span
           aria-hidden
-          className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground"
+          className="flex h-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary px-2 text-[11px] font-bold tracking-tight text-sidebar-primary-foreground"
         >
-          IN
+          INMA
         </span>
         {!collapsed ? (
           <span className="truncate font-semibold tracking-tight">{appName}</span>

@@ -22,9 +22,9 @@ export default async function LoginPage() {
       <div className="flex flex-col items-center gap-1 text-center">
         <span
           aria-hidden
-          className="flex size-11 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground"
+          className="flex h-11 items-center justify-center rounded-xl bg-primary px-3 text-base font-bold tracking-tight text-primary-foreground"
         >
-          IN
+          INMA
         </span>
         <h1 className="text-2xl font-semibold tracking-tight">{APP_NAME}</h1>
         <p className="text-sm text-muted-foreground">{APP_TAGLINE}</p>
