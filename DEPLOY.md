@@ -1,6 +1,6 @@
 # Panduan Deploy INMA di Coolify
 
-Panduan langkah-demi-langkah men-deploy **INMA (Internship Performance Matrix)**
+Panduan langkah-demi-langkah men-deploy **INMA (Monitoring Target Entri Dokumen)**
 ke [Coolify](https://coolify.io) memakai Dockerfile yang sudah ada di repo ini.
 
 > Ringkasnya: Coolify build image dari `Dockerfile`, container **otomatis
@@ -79,10 +79,8 @@ nilai rahasia sebagai **secret** (kecuali yang diawali `NEXT_PUBLIC_`).
 | `SEED_ADMIN_EMAIL` | `admin@example.com` | Email login admin |
 | `SEED_ADMIN_NAME` | `Administrator` | |
 | `SEED_ADMIN_PASSWORD` | `Password123!` | **WAJIB diganti** |
-| `SEED_MENTOR_EMAIL` | `mentor@bpsjakpus.cloud` | Mentor pemilik seluruh roster |
-| `SEED_MENTOR_NAME` | `Mentor BPS Jakpus` | |
-| `SEED_MENTOR_PASSWORD` | `Password123!` | **WAJIB diganti** |
 | `SEED_INTERN_PASSWORD` | `Password123!` | Password untuk 24 akun intern — **WAJIB diganti** |
+| `SEED_DAILY_TARGET` | `50` | Target entri dokumen harian (sama untuk semua intern) |
 | `SEED_INTERNSHIP_START` | hari ini | Format `YYYY-MM-DD`, mis. `2026-09-01` |
 | `SEED_INTERNSHIP_DAYS` | `90` | Lama magang dalam hari |
 
@@ -116,8 +114,9 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
    [entrypoint] running bootstrap seed (idempotent)...
    Seed selesai.
      interns:              24
-     akun dibuat:          26
+     akun dibuat:          25
      intern → GEMPITA:     24
+     target harian:        50
    ...
    Ready
    ```
@@ -158,8 +157,10 @@ selanjutnya dilakukan dari UI **Users**.
 - [ ] `curl /api/health` → `{"status":"ok"}`
 - [ ] Login admin memakai `SEED_ADMIN_EMAIL` + password baru
 - [ ] Ganti password admin (klik avatar → **Keluar** setelah ganti, lalu login ulang)
-- [ ] Login mentor (`mentor@bpsjakpus.cloud`) → **Interns** menampilkan 24 intern GEMPITA
-- [ ] Login salah satu intern → dashboard muncul, tombol **Catat pekerjaan hari ini** ada
+- [ ] Admin → **Monitoring** menampilkan 24 intern GEMPITA
+- [ ] Admin → **Settings** menetapkan target harian
+- [ ] Login salah satu intern → dashboard muncul, tombol **Catat entri** ada
+- [ ] Intern menambah entri di **/entri** → hitungan bertambah
 - [ ] Ganti password bersama untuk intern (via **Users** bila perlu)
 - [ ] `RUN_SEED_ON_START` sudah kembali `false`
 - [ ] Port database tidak terbuka publik
@@ -237,9 +238,8 @@ bukan `next start`. Warning ini tidak muncul di container.
 | Item | Nilai |
 | ---- | ----- |
 | Admin | 1 akun |
-| Mentor | 1 akun (`mentor@bpsjakpus.cloud`) — pemilik seluruh roster |
 | Intern | 24 akun (GEMPITA), status ACTIVE |
 | Departemen | `GEMPITA` (satu-satunya departemen aktif) |
-| Kriteria performa | 5 kriteria, total bobot 100 |
-| Data kerja | **tidak dibuat** (tugas/aktivitas/feedback/review kosong) |
+| Target harian | `SEED_DAILY_TARGET` (default `50`), dibuat bila belum ada |
+| Entri dokumen | **tidak dibuat** (hanya dengan `npm run db:seed:demo` di database lokal) |
 ```

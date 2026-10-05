@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import { isoDateSchema } from "./tasks";
+import { isoDateSchema } from "./common";
 
-export const roleSchema = z.enum(["ADMIN", "MENTOR", "INTERN"]);
+export const roleSchema = z.enum(["ADMIN", "INTERN"]);
 
 export const createUserSchema = z.object({
   name: z.string().trim().min(1, "Nama wajib diisi").max(120, "Maksimal 120 karakter"),
@@ -28,7 +28,6 @@ export const resetPasswordSchema = z.object({
 
 export const createInternSchema = z.object({
   userId: z.uuid("Pilih user dengan role INTERN"),
-  mentorId: z.uuid().optional().nullable(),
   departmentId: z.uuid().optional().nullable(),
   startDate: isoDateSchema,
   endDate: isoDateSchema,

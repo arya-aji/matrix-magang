@@ -42,7 +42,7 @@ export default async function LoginPage() {
 
       {process.env.NODE_ENV !== "production" ? (
         <p className="max-w-sm text-center text-xs text-muted-foreground">
-          Akun demo (development): admin@example.com · mentor@example.com · budi@example.com
+          Akun admin (development): admin@example.com — kata sandi dari SEED_ADMIN_PASSWORD.
         </p>
       ) : null}
     </div>

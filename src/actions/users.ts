@@ -61,7 +61,6 @@ export async function createUserAction(
     });
 
     revalidatePath("/users");
-    revalidatePath("/mentors");
     revalidatePath("/interns");
     return successState();
   } catch (error) {
@@ -118,7 +117,6 @@ export async function updateUserAction(
 
     revalidatePath("/users");
     revalidatePath(`/users/${parsed.data.userId}`);
-    revalidatePath("/mentors");
     revalidatePath("/interns");
     return successState();
   } catch (error) {

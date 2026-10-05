@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { and, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 /**
  * Bootstrap seed (`npm run db:seed`).
@@ -8,8 +8,8 @@ import { and, eq, inArray } from "drizzle-orm";
  * - it NEVER deletes domain data (no wipe);
  * - it upserts by natural key (email / name), so re-running is a no-op;
  * - existing passwords are never overwritten (an admin change is preserved);
- * - work records (tasks, activities, feedback, reviews) are NOT fabricated for
- *   real interns. Use `npm run db:seed:demo` only on a local database.
+ * - document entries are NOT fabricated for real interns. Use
+ *   `npm run db:seed:demo` only on a local database.
  *
  * Everything is configurable through environment variables so the credentials
  * for real accounts are never hardcoded (see .env.example).
@@ -23,13 +23,15 @@ const ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL ?? "admin@example.com").trim()
 const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? "Administrator";
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? DEFAULT_PASSWORD;
 
-const MENTOR_EMAIL = (process.env.SEED_MENTOR_EMAIL ?? "mentor@bpsjakpus.cloud")
+const INTERN_PASSWORD = process.env.SEED_INTERN_PASSWORD ?? DEFAULT_PASSWORD;
+
+/** Shared daily document-entry target applied to every intern. */
+const DAILY_TARGET = Number(process.env.SEED_DAILY_TARGET ?? 50);
+
+/** Legacy mentor account from earlier versions; removed so old roles do not linger. */
+const LEGACY_MENTOR_EMAIL = (process.env.SEED_MENTOR_EMAIL ?? "mentor@bpsjakpus.cloud")
   .trim()
   .toLowerCase();
-const MENTOR_NAME = process.env.SEED_MENTOR_NAME ?? "Mentor BPS Jakpus";
-const MENTOR_PASSWORD = process.env.SEED_MENTOR_PASSWORD ?? DEFAULT_PASSWORD;
-
-const INTERN_PASSWORD = process.env.SEED_INTERN_PASSWORD ?? DEFAULT_PASSWORD;
 
 /** Default internship window applied to interns that do not have one yet. */
 const INTERNSHIP_START = process.env.SEED_INTERNSHIP_START;
@@ -73,14 +75,6 @@ const DEPARTMENTS = [
 /** Filler departments created by earlier seed versions; retired (not deleted). */
 const LEGACY_DEPARTMENTS = ["Engineering", "Marketing", "Design"];
 
-const CRITERIA = [
-  { name: "Task Completion", description: "Konsistensi menyelesaikan tugas.", weight: 30 },
-  { name: "Quality", description: "Kualitas hasil kerja.", weight: 25 },
-  { name: "Initiative", description: "Inisiatif dan kemandirian.", weight: 15 },
-  { name: "Communication", description: "Komunikasi dengan tim.", weight: 15 },
-  { name: "Problem Solving", description: "Kemampuan memecahkan masalah.", weight: 15 },
-];
-
 /** Accounts created by the earlier demo seed; cleaned up so they do not linger. */
 const LEGACY_DEMO_EMAILS = [
   "budi@example.com",
@@ -89,6 +83,7 @@ const LEGACY_DEMO_EMAILS = [
   "rara@example.com",
   "mentor@example.com",
   "mentor2@example.com",
+  LEGACY_MENTOR_EMAIL,
 ];
 
 // Must run before `./index` (which throws when DATABASE_URL is missing).
@@ -112,30 +107,28 @@ async function main() {
     usersCreated: 0,
     usersUpdated: 0,
     internshipsCreated: 0,
-    mentorsReassigned: 0,
     departmentsCreated: 0,
     departmentsAssigned: 0,
     departmentsRetired: 0,
-    criteriaCreated: 0,
+    settingsCreated: 0,
+    demoEntriesCreated: 0,
   };
 
   /* ---------------------------------------------------------------------- */
-  /* 1. Remove the previous demo accounts (and the records that block them)  */
+  /* 1. Remove legacy demo/mentor accounts (cascades to their records)       */
   /* ---------------------------------------------------------------------- */
   const legacy = await db
-    .select({ id: s.users.id, email: s.users.email })
+    .select({ id: s.users.id })
     .from(s.users)
     .where(inArray(s.users.email, LEGACY_DEMO_EMAILS));
 
   if (legacy.length > 0) {
-    const legacyIds = legacy.map((row) => row.id);
-
-    // `tasks.created_by` and `performance_reviews.reviewer_id` are RESTRICT,
-    // so their rows must go first; the rest cascades from users.
-    await db.delete(s.performanceReviews).where(inArray(s.performanceReviews.reviewerId, legacyIds));
-    await db.delete(s.tasks).where(inArray(s.tasks.createdBy, legacyIds));
-    await db.delete(s.users).where(inArray(s.users.id, legacyIds));
-
+    await db.delete(s.users).where(
+      inArray(
+        s.users.id,
+        legacy.map((row) => row.id),
+      ),
+    );
     stats.legacyRemoved = legacy.length;
   }
 
@@ -150,7 +143,7 @@ async function main() {
   }
 
   async function upsertUser(
-    role: "ADMIN" | "MENTOR" | "INTERN",
+    role: "ADMIN" | "INTERN",
     name: string,
     email: string,
     password: string,
@@ -182,7 +175,6 @@ async function main() {
   }
 
   await upsertUser("ADMIN", ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD);
-  const mentorId = await upsertUser("MENTOR", MENTOR_NAME, MENTOR_EMAIL, MENTOR_PASSWORD);
 
   const internIds: { name: string; email: string; id: string }[] = [];
   for (const intern of INTERNS) {
@@ -229,9 +221,7 @@ async function main() {
   const retired = await db
     .update(s.departments)
     .set({ isActive: false })
-    .where(
-      and(inArray(s.departments.name, LEGACY_DEPARTMENTS), eq(s.departments.isActive, true)),
-    )
+    .where(inArray(s.departments.name, LEGACY_DEPARTMENTS))
     .returning({ id: s.departments.id });
   stats.departmentsRetired = retired.length;
 
@@ -240,7 +230,6 @@ async function main() {
     const [existing] = await db
       .select({
         id: s.internships.id,
-        mentorId: s.internships.mentorId,
         departmentId: s.internships.departmentId,
       })
       .from(s.internships)
@@ -248,21 +237,18 @@ async function main() {
       .limit(1);
 
     if (existing) {
-      const patch: { mentorId?: string; departmentId?: string } = {};
-      if (existing.mentorId !== mentorId) patch.mentorId = mentorId;
-      if (existing.departmentId !== gempitaId) patch.departmentId = gempitaId;
-
-      if (Object.keys(patch).length > 0) {
-        await db.update(s.internships).set(patch).where(eq(s.internships.id, existing.id));
-        if (patch.mentorId) stats.mentorsReassigned += 1;
-        if (patch.departmentId) stats.departmentsAssigned += 1;
+      if (existing.departmentId !== gempitaId) {
+        await db
+          .update(s.internships)
+          .set({ departmentId: gempitaId })
+          .where(eq(s.internships.id, existing.id));
+        stats.departmentsAssigned += 1;
       }
       continue;
     }
 
     await db.insert(s.internships).values({
       userId: intern.id,
-      mentorId,
       departmentId: gempitaId,
       startDate: internshipStart,
       endDate: internshipEnd,
@@ -272,125 +258,78 @@ async function main() {
     stats.departmentsAssigned += 1;
   }
 
-  /* -------------------------- performance criteria ----------------------- */
-  for (const criterion of CRITERIA) {
-    const [existing] = await db
-      .select({ id: s.performanceCriteria.id, weight: s.performanceCriteria.weight })
-      .from(s.performanceCriteria)
-      .where(eq(s.performanceCriteria.name, criterion.name))
-      .limit(1);
+  /* --------------------------- app settings ------------------------------ */
+  const [existingSettings] = await db
+    .select({ id: s.appSettings.id })
+    .from(s.appSettings)
+    .limit(1);
 
-    if (existing) {
-      if (existing.weight !== criterion.weight) {
-        await db
-          .update(s.performanceCriteria)
-          .set({ weight: criterion.weight, description: criterion.description })
-          .where(eq(s.performanceCriteria.id, existing.id));
-      }
-    } else {
-      await db.insert(s.performanceCriteria).values({ ...criterion, isActive: true });
-      stats.criteriaCreated += 1;
-    }
+  if (!existingSettings) {
+    await db.insert(s.appSettings).values({ dailyTarget: DAILY_TARGET });
+    stats.settingsCreated += 1;
   }
 
   /* --------------------------- optional demo data ------------------------ */
   if (DEMO) {
-    const sample = internIds.slice(0, 3);
-    if (sample.length > 0) {
-      const createdTasks = await db
-        .insert(s.tasks)
-        .values([
-          {
-            title: "Build Login Page",
-            description: "Contoh tugas demo (hanya untuk database lokal).",
-            createdBy: mentorId,
-            status: "IN_PROGRESS" as const,
-            priority: "HIGH" as const,
-            progress: 70,
-            startDate: addDays(today, -3),
-            dueDate: addDays(today, 3),
-          },
-          {
-            title: "API Integration",
-            description: "Contoh tugas demo yang dikerjakan dua intern.",
-            createdBy: mentorId,
-            status: "BLOCKED" as const,
-            priority: "MEDIUM" as const,
-            progress: 40,
-            startDate: addDays(today, -5),
-            dueDate: addDays(today, -1),
-          },
-        ])
-        .returning({ id: s.tasks.id });
+    const [anyEntry] = await db
+      .select({ id: s.documentEntries.id })
+      .from(s.documentEntries)
+      .limit(1);
 
-      const [first, second] = createdTasks;
-      if (first && second) {
-        const pairs = [
-          ...sample.map((intern) => ({ taskId: first.id, userId: intern.id })),
-          ...sample.slice(0, 2).map((intern) => ({ taskId: second.id, userId: intern.id })),
-        ];
-        await db.insert(s.taskAssignees).values(pairs);
+    if (!anyEntry) {
+      const sample = internIds.slice(0, 5);
+      const rows: {
+        internId: string;
+        entryDate: string;
+        name: string;
+        kind: "USAHA" | "KELUARGA";
+      }[] = [];
 
-        await db.insert(s.taskActivityLogs).values(
-          createdTasks.map((task) => ({
-            taskId: task.id,
-            actorId: mentorId,
-            type: "CREATED" as const,
-            description: "Tugas demo dibuat oleh seed.",
-          })),
-        );
-
-        const [activity] = await db
-          .insert(s.dailyActivities)
-          .values({
-            internId: sample[0]?.id ?? "",
-            activityDate: today,
-            summary: "Contoh aktivitas demo (hanya untuk database lokal).",
-            progress: 60,
-            status: "DRAFT" as const,
-          })
-          .returning({ id: s.dailyActivities.id });
-
-        if (activity) {
-          await db
-            .insert(s.dailyActivityTasks)
-            .values({ activityId: activity.id, taskId: first.id });
+      for (const intern of sample) {
+        for (let day = 0; day < 14; day += 1) {
+          const entryDate = addDays(today, -day);
+          const count = 20 + ((day * 7 + intern.name.length) % 45); // 20..64
+          for (let i = 0; i < count; i += 1) {
+            const kind: "USAHA" | "KELUARGA" = i % 3 === 0 ? "KELUARGA" : "USAHA";
+            rows.push({
+              internId: intern.id,
+              entryDate,
+              name: `${kind === "USAHA" ? "Usaha" : "Keluarga"} Demo ${day}-${i + 1}`,
+              kind,
+            });
+          }
         }
-
-        await db.insert(s.feedback).values({
-          internId: sample[0]?.id ?? "",
-          authorId: mentorId,
-          content: "Contoh feedback demo (hanya untuk database lokal).",
-        });
       }
+
+      for (let i = 0; i < rows.length; i += 500) {
+        await db.insert(s.documentEntries).values(rows.slice(i, i + 500));
+      }
+      stats.demoEntriesCreated = rows.length;
     }
   }
 
   /* ------------------------------- summary ------------------------------- */
-  const defaultPasswordInUse = [ADMIN_PASSWORD, MENTOR_PASSWORD, INTERN_PASSWORD].includes(
-    DEFAULT_PASSWORD,
-  );
+  const defaultPasswordInUse = [ADMIN_PASSWORD, INTERN_PASSWORD].includes(DEFAULT_PASSWORD);
 
   console.log("Seed selesai.");
   console.log(`  demo data:            ${DEMO ? "YA (jangan dipakai di produksi)" : "tidak"}`);
   console.log(`  admin:                ${ADMIN_EMAIL}`);
-  console.log(`  mentor:               ${MENTOR_EMAIL}`);
   console.log(`  interns:              ${internIds.length}`);
   console.log(`  akun dibuat:          ${stats.usersCreated}`);
   console.log(`  akun diperbarui:      ${stats.usersUpdated}`);
   console.log(`  magang dibuat:        ${stats.internshipsCreated}`);
-  console.log(`  mentor dirapikan:     ${stats.mentorsReassigned}`);
   console.log(`  departemen dibuat:    ${stats.departmentsCreated}`);
   console.log(`  intern → GEMPITA:     ${stats.departmentsAssigned}`);
   console.log(`  departemen lama:      ${stats.departmentsRetired} dinonaktifkan`);
-  console.log(`  kriteria dibuat:      ${stats.criteriaCreated}`);
-  console.log(`  akun demo lama hapus: ${stats.legacyRemoved}`);
+  console.log(`  target harian:        ${existingSettings ? "(sudah ada, tidak diubah)" : DAILY_TARGET}`);
+  console.log(`  entri demo dibuat:    ${stats.demoEntriesCreated}`);
+  console.log(`  akun lama hapus:      ${stats.legacyRemoved}`);
   console.log("");
 
   if (defaultPasswordInUse) {
     console.warn(
-      "PERINGATAN: masih memakai password default. Set SEED_ADMIN_PASSWORD, " +
-      "SEED_MENTOR_PASSWORD, dan SEED_INTERN_PASSWORD sebelum deploy ke produksi.",
+      "PERINGATAN: masih memakai password default. Set SEED_ADMIN_PASSWORD dan " +
+      "SEED_INTERN_PASSWORD sebelum deploy ke produksi.",
     );
   }
   console.log(

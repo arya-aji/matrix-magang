@@ -11,7 +11,7 @@ import {
 
 import { timestamps } from "./_shared";
 
-export const roleEnum = pgEnum("role", ["ADMIN", "MENTOR", "INTERN"]);
+export const roleEnum = pgEnum("role", ["ADMIN", "INTERN"]);
 
 export const users = pgTable(
   "users",

@@ -2,164 +2,132 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ActivityCard } from "@/components/activities/activity-card";
-import { FeedbackForm } from "@/components/feedback/feedback-form";
-import { FeedbackList } from "@/components/feedback/feedback-list";
-import { ProgressBar } from "@/components/shared/progress-bar";
-import { ReviewStatusBadge } from "@/components/shared/status-badge";
+import { EntryList } from "@/components/entries/entry-list";
+import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { TaskCardList } from "@/components/tasks/task-card";
+import { ListCard, ListRow, ListRowMain } from "@/components/shared/list";
+import { ProgressBar } from "@/components/shared/progress-bar";
+import { InternshipStatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { calculateInternshipProgress, formatDate } from "@/lib/date";
-import { requireAuth } from "@/server/auth/session";
-import { guard } from "@/server/permissions/guard";
-import { getActivitiesForIntern } from "@/server/queries/activities";
+import { Card, CardContent } from "@/components/ui/card";
+import { addDays, calculateInternshipProgress, formatDate, getTodayJakarta } from "@/lib/date";
+import { requireRole } from "@/server/auth/session";
+import { getEntriesForInternDate, getEntryTotalsByDate } from "@/server/queries/entries";
 import { getInternDetail } from "@/server/queries/interns";
-import { getReviewsForIntern } from "@/server/queries/performance";
-import { getTasksForUser } from "@/server/queries/tasks";
-import { db } from "@/db";
-import { feedback as feedbackTable, users } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { getSettings } from "@/server/queries/settings";
 
 export default async function InternDetailPage({
   params,
 }: {
   params: Promise<{ internId: string }>;
 }) {
-  const user = await requireAuth();
+  await requireRole("ADMIN");
   const { internId } = await params;
 
-  const intern = await guard(() => getInternDetail(user, internId));
-  if (!intern) notFound();
+  const intern = await getInternDetail(internId);
+  if (!intern || !intern.isActive) notFound();
 
-  const [tasksResult, activities, reviews, internFeedback] = await Promise.all([
-    guard(() => getTasksForUser(user, { assigneeId: internId, pageSize: 50 })),
-    getActivitiesForIntern(user, internId, 1, 10),
-    getReviewsForIntern(internId),
-    db
-      .select({
-        id: feedbackTable.id,
-        content: feedbackTable.content,
-        createdAt: feedbackTable.createdAt,
-        authorName: users.name,
-        authorRole: users.role,
-      })
-      .from(feedbackTable)
-      .innerJoin(users, eq(feedbackTable.authorId, users.id))
-      .where(eq(feedbackTable.internId, internId))
-      .orderBy(desc(feedbackTable.createdAt))
-      .limit(20),
+  const today = getTodayJakarta();
+  const [{ dailyTarget: target }, todayEntries, totals] = await Promise.all([
+    getSettings(),
+    getEntriesForInternDate(internId, today),
+    getEntryTotalsByDate(internId, addDays(today, -29), today),
   ]);
 
-  const progress = calculateInternshipProgress({
-    startDate: intern.startDate,
-    endDate: intern.endDate,
-    status: intern.internshipStatus,
-  });
+  const internshipProgress =
+    intern.startDate && intern.endDate && intern.internshipStatus
+      ? calculateInternshipProgress({
+          startDate: intern.startDate,
+          endDate: intern.endDate,
+          status: intern.internshipStatus,
+          today,
+        })
+      : null;
 
-  const canFeedback = user.role === "ADMIN" || user.role === "MENTOR";
+  const grandTotal = totals.reduce((sum, day) => sum + day.total, 0);
+  const todayPercent =
+    target > 0 ? Math.min(100, Math.round((todayEntries.length / target) * 100)) : 0;
 
   return (
     <div className="flex flex-col gap-5">
-      <Button variant="ghost" size="sm" asChild className="-ml-2 self-start">
-        <Link href="/interns">
-          <ArrowLeft className="size-4" aria-hidden />
-          Kembali
-        </Link>
-      </Button>
+      <div>
+        <Button variant="ghost" size="sm" asChild className="-ml-2">
+          <Link href="/monitoring">
+            <ArrowLeft className="size-4" aria-hidden />
+            Kembali
+          </Link>
+        </Button>
+      </div>
 
-      <header className="flex flex-col gap-2">
-        <h1 className="text-xl font-semibold tracking-tight">{intern.name}</h1>
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span>{intern.departmentName ?? "Tanpa departemen"}</span>
-          <span aria-hidden>·</span>
-          <span>Mentor: {intern.mentorName ?? "-"}</span>
-          {!intern.isActive ? <Badge variant="destructive">Tidak aktif</Badge> : null}
-        </div>
-        <ProgressBar
-          value={progress.progressPercentage}
-          label={`Hari ${progress.currentDay} / ${progress.totalDays}`}
-        />
-      </header>
+      <PageHeader
+        title={intern.name}
+        description={`${intern.email} · ${intern.departmentName ?? "Tanpa departemen"}`}
+        actions={intern.internshipStatus ? <InternshipStatusBadge status={intern.internshipStatus} /> : undefined}
+      />
 
-      <Tabs defaultValue="tasks">
-        <TabsList className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="feedback">Feedback</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="tasks" className="flex flex-col gap-3">
-          {tasksResult.items.length === 0 ? (
-            <EmptyState title="Belum ada tugas" description="Intern ini belum memiliki tugas." />
+      <Card className="py-0">
+        <CardContent className="flex flex-col gap-3 px-4 py-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] text-muted-foreground">Entri hari ini</p>
+              <p className="text-2xl font-semibold tabular-nums">
+                {todayEntries.length}
+                <span className="text-base text-muted-foreground">/{target}</span>
+              </p>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {todayEntries.length >= target ? "Target tercapai" : `${todayPercent}%`}
+            </span>
+          </div>
+          <ProgressBar value={todayPercent} label="Progres target harian" />
+          {intern.startDate && intern.endDate ? (
+            <p className="text-xs text-muted-foreground">
+              Periode: {formatDate(intern.startDate)} – {formatDate(intern.endDate)}
+            </p>
           ) : (
-            <TaskCardList tasks={tasksResult.items} showAssignees={false} />
+            <p className="text-xs text-muted-foreground">Belum ada periode magang.</p>
           )}
-        </TabsContent>
-
-        <TabsContent value="activity" className="flex flex-col gap-3">
-          {activities.items.length === 0 ? (
-            <EmptyState
-              title="Belum ada aktivitas"
-              description="Intern ini belum mengirim aktivitas harian."
-            />
-          ) : (
-            activities.items.map((activity) => (
-              <Link key={activity.id} href={`/activity/${activity.id}`}>
-                <ActivityCard activity={activity} />
-              </Link>
-            ))
-          )}
-        </TabsContent>
-
-        <TabsContent value="performance" className="flex flex-col gap-3">
-          {reviews.length === 0 ? (
-            <EmptyState
-              title="Belum ada review"
-              description="Belum ada penilaian performa untuk intern ini."
-            />
-          ) : (
-            reviews.map((review) => (
-              <Link key={review.id} href={`/performance/${review.id}`}>
-                <Card className="py-3">
-                  <CardContent className="flex items-center justify-between gap-2 px-4">
-                    <div>
-                      <p className="text-sm">
-                        {formatDate(review.periodStart)} – {formatDate(review.periodEnd)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">oleh {review.reviewerName}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium tabular-nums">
-                        {review.overallScore ?? "-"}
-                      </span>
-                      <ReviewStatusBadge status={review.status} />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))
-          )}
-        </TabsContent>
-
-        <TabsContent value="feedback" className="flex flex-col gap-3">
-          <FeedbackList entries={internFeedback} />
-          {canFeedback ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Beri feedback</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <FeedbackForm internId={internId} />
-              </CardContent>
-            </Card>
+          {internshipProgress ? (
+            <ProgressBar value={internshipProgress.progressPercentage} label="Progres magang" />
           ) : null}
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold">Entri hari ini ({todayEntries.length})</h2>
+        <EntryList entries={todayEntries} />
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold">
+          30 hari terakhir · {grandTotal} entri
+        </h2>
+        {totals.length === 0 ? (
+          <EmptyState title="Belum ada entri" description="Belum ada entri tercatat." />
+        ) : (
+          <ListCard>
+            {totals.map((day) => (
+              <ListRow key={day.date}>
+                <ListRowMain title={formatDate(day.date)} />
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="tabular-nums text-sm font-medium">
+                    {day.total}
+                    <span className="text-muted-foreground">/{target}</span>
+                  </span>
+                  {day.total >= target ? (
+                    <Badge variant="secondary">Tercapai</Badge>
+                  ) : (
+                    <Badge variant="outline">
+                      {Math.min(100, Math.round((day.total / target) * 100))}%
+                    </Badge>
+                  )}
+                </div>
+              </ListRow>
+            ))}
+          </ListCard>
+        )}
+      </section>
     </div>
   );
 }

@@ -1,114 +1,61 @@
 import { describe, expect, it } from "vitest";
 
-import { saveDailyActivitySchema } from "@/lib/validations/activities";
-import { createFeedbackSchema } from "@/lib/validations/feedback";
-import { createTaskSchema, updateTaskProgressSchema } from "@/lib/validations/tasks";
-import { createUserSchema } from "@/lib/validations/users";
+import { isoDateSchema } from "@/lib/validations/common";
+import { createEntrySchema } from "@/lib/validations/entries";
+import { updateSettingsSchema } from "@/lib/validations/settings";
+import { createInternSchema, createUserSchema } from "@/lib/validations/users";
 
 const VALID_UUID = "6f9c1e7b-4a6d-4f0c-8e5a-7b9d1f3c5e7a";
-const SECOND_UUID = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
-const THIRD_UUID = "9f8e7d6c-5b4a-4c3d-8e2f-1a0b9c8d7e6f";
 
-describe("task validation (PRD §47)", () => {
-  it("rejects progress outside 0–100", () => {
-    expect(
-      updateTaskProgressSchema.safeParse({ taskId: VALID_UUID, progress: -1 }).success,
-    ).toBe(false);
-    expect(
-      updateTaskProgressSchema.safeParse({ taskId: VALID_UUID, progress: 101 }).success,
-    ).toBe(false);
-    expect(
-      updateTaskProgressSchema.safeParse({ taskId: VALID_UUID, progress: 0 }).success,
-    ).toBe(true);
-    expect(
-      updateTaskProgressSchema.safeParse({ taskId: VALID_UUID, progress: 100 }).success,
-    ).toBe(true);
+describe("document entry validation", () => {
+  it("requires a non-empty name", () => {
+    expect(createEntrySchema.safeParse({ name: "   ", kind: "USAHA" }).success).toBe(false);
+    expect(createEntrySchema.safeParse({ name: "Toko Maju", kind: "USAHA" }).success).toBe(true);
   });
 
-  it("accepts an explicit status change to COMPLETED", () => {
+  it("caps the name at 200 characters", () => {
+    expect(createEntrySchema.safeParse({ name: "x".repeat(201), kind: "USAHA" }).success).toBe(
+      false,
+    );
+    expect(createEntrySchema.safeParse({ name: "x".repeat(200), kind: "USAHA" }).success).toBe(
+      true,
+    );
+  });
+
+  it("only accepts USAHA or KELUARGA", () => {
+    expect(createEntrySchema.safeParse({ name: "Keluarga A", kind: "KELUARGA" }).success).toBe(
+      true,
+    );
+    expect(createEntrySchema.safeParse({ name: "X", kind: "LAINNYA" }).success).toBe(false);
+  });
+
+  it("keeps the note optional and capped at 2000 characters", () => {
+    expect(createEntrySchema.safeParse({ name: "Toko A", kind: "USAHA" }).success).toBe(true);
     expect(
-      updateTaskProgressSchema.safeParse({ taskId: VALID_UUID, status: "COMPLETED" }).success,
-    ).toBe(true);
-  });
-
-  it("rejects a due date before the start date", () => {
-    const result = createTaskSchema.safeParse({
-      title: "Build Login Page",
-      assigneeIds: [VALID_UUID],
-      priority: "MEDIUM",
-      startDate: "2026-09-10",
-      dueDate: "2026-09-01",
-    });
-
-    expect(result.success).toBe(false);
-  });
-
-  it("requires a title of at most 200 characters", () => {
-    expect(
-      createTaskSchema.safeParse({
-        title: "x".repeat(201),
-        assigneeIds: [VALID_UUID],
-      }).success,
-    ).toBe(false);
-    expect(
-      createTaskSchema.safeParse({
-        title: "x".repeat(200),
-        assigneeIds: [VALID_UUID],
-      }).success,
-    ).toBe(true);
-  });
-
-  it("accepts a task worked on by more than one intern", () => {
-    const result = createTaskSchema.safeParse({
-      title: "API Integration",
-      assigneeIds: [VALID_UUID, SECOND_UUID, THIRD_UUID],
-    });
-
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.assigneeIds).toHaveLength(3);
-    }
-  });
-
-  it("requires at least one assignee", () => {
-    expect(
-      createTaskSchema.safeParse({ title: "Tanpa assignee", assigneeIds: [] }).success,
-    ).toBe(false);
-    expect(
-      createTaskSchema.safeParse({ title: "Tanpa assignee" }).success,
-    ).toBe(false);
-  });
-});
-
-describe("daily activity validation (PRD §47)", () => {
-  it("requires a summary of at least 5 characters", () => {
-    expect(saveDailyActivitySchema.safeParse({ summary: "abcd" }).success).toBe(false);
-    expect(saveDailyActivitySchema.safeParse({ summary: "abcde" }).success).toBe(true);
-  });
-
-  it("keeps blocker and next step optional", () => {
-    const result = saveDailyActivitySchema.safeParse({ summary: "Mengerjakan login page." });
-    expect(result.success).toBe(true);
-  });
-
-  it("caps blocker at 2000 characters", () => {
-    expect(
-      saveDailyActivitySchema.safeParse({
-        summary: "Valid summary",
-        blocker: "b".repeat(2001),
+      createEntrySchema.safeParse({
+        name: "Toko A",
+        kind: "USAHA",
+        note: "n".repeat(2001),
       }).success,
     ).toBe(false);
   });
 });
 
-describe("feedback validation (PRD §47)", () => {
-  it("requires content of at least 2 characters", () => {
-    expect(
-      createFeedbackSchema.safeParse({ internId: VALID_UUID, content: "a" }).success,
-    ).toBe(false);
-    expect(
-      createFeedbackSchema.safeParse({ internId: VALID_UUID, content: "ok" }).success,
-    ).toBe(true);
+describe("settings validation", () => {
+  it("requires a positive integer target", () => {
+    expect(updateSettingsSchema.safeParse({ dailyTarget: 50 }).success).toBe(true);
+    expect(updateSettingsSchema.safeParse({ dailyTarget: 0 }).success).toBe(false);
+    expect(updateSettingsSchema.safeParse({ dailyTarget: -3 }).success).toBe(false);
+    expect(updateSettingsSchema.safeParse({ dailyTarget: 1.5 }).success).toBe(false);
+    expect(updateSettingsSchema.safeParse({ dailyTarget: 10_001 }).success).toBe(false);
+  });
+});
+
+describe("date validation", () => {
+  it("accepts YYYY-MM-DD and rejects other shapes", () => {
+    expect(isoDateSchema.safeParse("2026-09-28").success).toBe(true);
+    expect(isoDateSchema.safeParse("28-09-2026").success).toBe(false);
+    expect(isoDateSchema.safeParse("2026-9-8").success).toBe(false);
   });
 });
 
@@ -131,5 +78,37 @@ describe("user validation", () => {
         role: "INTERN",
       }).success,
     ).toBe(false);
+  });
+
+  it("only allows ADMIN and INTERN roles", () => {
+    expect(
+      createUserSchema.safeParse({
+        name: "Budi",
+        email: "budi@example.com",
+        password: "Magang3173",
+        role: "ADMIN",
+      }).success,
+    ).toBe(true);
+
+    expect(
+      createUserSchema.safeParse({
+        name: "Budi",
+        email: "budi@example.com",
+        password: "Magang3173",
+        role: "MENTOR",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("creates an internship without a mentor field", () => {
+    const result = createInternSchema.safeParse({
+      userId: VALID_UUID,
+      departmentId: null,
+      startDate: "2026-09-01",
+      endDate: "2026-12-01",
+      status: "ACTIVE",
+    });
+
+    expect(result.success).toBe(true);
   });
 });

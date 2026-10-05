@@ -1,14 +1,11 @@
 import {
-  Award,
+  BarChart3,
   Building,
-  CalendarCheck,
-  CalendarDays,
   ClipboardList,
   Ellipsis,
+  History,
   House,
-  ListChecks,
   Settings,
-  Star,
   User,
   UserCog,
   Users,
@@ -23,30 +20,20 @@ import {
 export const mobileNav = {
   INTERN: [
     { href: "/dashboard", label: "Home", icon: House },
-    { href: "/tasks", label: "Tasks", icon: ListChecks },
-    { href: "/calendar", label: "Kalender", icon: CalendarDays },
-    { href: "/activity", label: "Activity", icon: CalendarCheck },
-    { href: "/profile", label: "Me", icon: User },
-  ],
-  MENTOR: [
-    { href: "/dashboard", label: "Home", icon: House },
-    { href: "/interns", label: "Interns", icon: Users },
-    { href: "/tasks", label: "Tasks", icon: ListChecks },
-    { href: "/calendar", label: "Kalender", icon: CalendarDays },
-    { href: "/performance", label: "Reviews", icon: Star },
+    { href: "/entri", label: "Entri", icon: ClipboardList },
+    { href: "/riwayat", label: "Riwayat", icon: History },
     { href: "/profile", label: "Me", icon: User },
   ],
   ADMIN: [
     { href: "/dashboard", label: "Home", icon: House },
+    { href: "/monitoring", label: "Monitor", icon: BarChart3 },
     { href: "/interns", label: "Interns", icon: Users },
-    { href: "/tasks", label: "Tasks", icon: ListChecks },
   ],
 } as const;
 
 /** Items hidden behind the admin "More" sheet on mobile. */
 export const adminMoreNav = [
   { href: "/users", label: "Users", icon: UserCog },
-  { href: "/mentors", label: "Mentors", icon: Award },
   { href: "/departments", label: "Departments", icon: Building },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
@@ -54,28 +41,16 @@ export const adminMoreNav = [
 export const desktopNav = {
   INTERN: [
     { href: "/dashboard", label: "Dashboard", icon: House },
-    { href: "/tasks", label: "Tasks", icon: ListChecks },
-    { href: "/calendar", label: "Kalender", icon: CalendarDays },
-    { href: "/activity", label: "Activity", icon: CalendarCheck },
-    { href: "/performance", label: "Performance", icon: Star },
-    { href: "/profile", label: "Profile", icon: User },
-  ],
-  MENTOR: [
-    { href: "/dashboard", label: "Dashboard", icon: House },
-    { href: "/interns", label: "Interns", icon: Users },
-    { href: "/tasks", label: "Tasks", icon: ListChecks },
-    { href: "/calendar", label: "Kalender", icon: CalendarDays },
-    { href: "/activity", label: "Activity", icon: CalendarCheck },
-    { href: "/performance", label: "Performance", icon: Star },
+    { href: "/entri", label: "Entri Dokumen", icon: ClipboardList },
+    { href: "/riwayat", label: "Riwayat", icon: History },
     { href: "/profile", label: "Profile", icon: User },
   ],
   ADMIN: [
     { href: "/dashboard", label: "Dashboard", icon: House },
+    { href: "/monitoring", label: "Monitoring", icon: BarChart3 },
     { href: "/interns", label: "Interns", icon: Users },
-    { href: "/mentors", label: "Mentors", icon: Award },
     { href: "/users", label: "Users", icon: UserCog },
     { href: "/departments", label: "Departments", icon: Building },
-    { href: "/tasks", label: "Tasks", icon: ClipboardList },
     { href: "/settings", label: "Settings", icon: Settings },
   ],
 } as const;

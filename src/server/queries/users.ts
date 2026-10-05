@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, or } from "drizzle-orm";
+import { and, asc, count, eq, ilike, isNull, or } from "drizzle-orm";
 
 import { db } from "@/db";
 import { departments, internships, users } from "@/db/schema";
@@ -6,7 +6,7 @@ import { PAGE_SIZE } from "@/lib/constants";
 
 export type UserListFilters = {
   q?: string;
-  role?: "ADMIN" | "MENTOR" | "INTERN";
+  role?: "ADMIN" | "INTERN";
   activeOnly?: boolean;
   page?: number;
 };
@@ -57,30 +57,6 @@ export async function getUsers(options: UserListFilters = {}) {
   };
 }
 
-export async function getMentorsWithCounts() {
-  const [rows, counts] = await Promise.all([
-    db
-      .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        isActive: users.isActive,
-        avatarUrl: users.avatarUrl,
-      })
-      .from(users)
-      .where(eq(users.role, "MENTOR"))
-      .orderBy(asc(users.name)),
-    db
-      .select({ mentorId: internships.mentorId, value: count() })
-      .from(internships)
-      .groupBy(internships.mentorId),
-  ]);
-
-  const countMap = new Map(counts.map((row) => [row.mentorId, Number(row.value)]));
-
-  return rows.map((row) => ({ ...row, internCount: countMap.get(row.id) ?? 0 }));
-}
-
 export async function getUserById(userId: string) {
   const [row] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   return row ?? null;
@@ -101,10 +77,12 @@ export async function getDepartments(includeInactive = false) {
     .orderBy(asc(departments.name));
 }
 
-export async function getMentorOptions() {
+/** INTERN users who are not linked to an internship yet (for the create dialog). */
+export async function getSelectableInterns() {
   return db
-    .select({ id: users.id, name: users.name })
+    .select({ id: users.id, name: users.name, email: users.email })
     .from(users)
-    .where(eq(users.role, "MENTOR"))
+    .leftJoin(internships, eq(internships.userId, users.id))
+    .where(and(eq(users.role, "INTERN"), isNull(internships.id)))
     .orderBy(asc(users.name));
 }

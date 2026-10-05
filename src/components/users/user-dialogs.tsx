@@ -29,7 +29,7 @@ import { toast } from "@/components/ui/sonner";
 import { idleFormState, type FormState } from "@/lib/form-state";
 import type { UserRole } from "@/db/schema";
 
-const ROLE_OPTIONS: UserRole[] = ["ADMIN", "MENTOR", "INTERN"];
+const ROLE_OPTIONS: UserRole[] = ["ADMIN", "INTERN"];
 
 export type EditableUser = {
   id: string;
@@ -97,7 +97,7 @@ export function CreateUserDialog() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>User baru</DialogTitle>
-          <DialogDescription>Buat akun untuk admin, mentor, atau intern.</DialogDescription>
+          <DialogDescription>Buat akun untuk admin atau intern.</DialogDescription>
         </DialogHeader>
 
         <form action={handleSubmit} className="flex flex-col gap-4" noValidate>

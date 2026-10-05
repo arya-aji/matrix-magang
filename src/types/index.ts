@@ -1,14 +1,6 @@
-import type {
-  DailyActivityStatus,
-  InternshipStatus,
-  ReviewStatus,
-  TaskLogType,
-  TaskPriority,
-  TaskStatus,
-  UserRole,
-} from "@/db/schema";
+import type { InternshipStatus, UserRole } from "@/db/schema";
 
-export type { DailyActivityStatus, InternshipStatus, ReviewStatus, TaskLogType, TaskPriority, TaskStatus, UserRole };
+export type { InternshipStatus, UserRole };
 
 /** Serializable session user used across the app. */
 export type SessionUser = {
@@ -21,7 +13,7 @@ export type SessionUser = {
 
 /**
  * Every server action returns this discriminated union so callers can render
- * user-friendly errors without leaking internals (PRD §46).
+ * user-friendly errors without leaking internals.
  */
 export type ActionResult<T = undefined> =
   | ({ ok: true } & (T extends undefined ? { data?: undefined } : { data: T }))

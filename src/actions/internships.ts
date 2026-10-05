@@ -18,29 +18,16 @@ function optionalValue(value: FormDataEntryValue | null) {
   return text === "" ? undefined : text;
 }
 
-async function validateReferences(mentorId?: string | null, departmentId?: string | null) {
-  if (mentorId) {
-    const [mentor] = await db
-      .select({ id: users.id, role: users.role })
-      .from(users)
-      .where(eq(users.id, mentorId))
-      .limit(1);
+async function validateDepartment(departmentId?: string | null) {
+  if (!departmentId) return null;
 
-    if (!mentor || (mentor.role !== "MENTOR" && mentor.role !== "ADMIN")) {
-      return "Mentor harus berperan MENTOR atau ADMIN.";
-    }
-  }
+  const [department] = await db
+    .select({ id: departments.id })
+    .from(departments)
+    .where(eq(departments.id, departmentId))
+    .limit(1);
 
-  if (departmentId) {
-    const [department] = await db
-      .select({ id: departments.id })
-      .from(departments)
-      .where(eq(departments.id, departmentId))
-      .limit(1);
-
-    if (!department) return "Departemen tidak ditemukan.";
-  }
-
+  if (!department) return "Departemen tidak ditemukan.";
   return null;
 }
 
@@ -55,7 +42,6 @@ export async function createInternshipAction(
 
     const parsed = createInternSchema.safeParse({
       userId: formData.get("userId"),
-      mentorId: optionalValue(formData.get("mentorId")) ?? null,
       departmentId: optionalValue(formData.get("departmentId")) ?? null,
       startDate: formData.get("startDate"),
       endDate: formData.get("endDate"),
@@ -88,15 +74,11 @@ export async function createInternshipAction(
       return errorState("Intern ini sudah memiliki data magang.");
     }
 
-    const referenceError = await validateReferences(
-      parsed.data.mentorId,
-      parsed.data.departmentId,
-    );
+    const referenceError = await validateDepartment(parsed.data.departmentId);
     if (referenceError) return errorState(referenceError);
 
     await db.insert(internships).values({
       userId: parsed.data.userId,
-      mentorId: parsed.data.mentorId ?? null,
       departmentId: parsed.data.departmentId ?? null,
       startDate: parsed.data.startDate,
       endDate: parsed.data.endDate,
@@ -104,7 +86,6 @@ export async function createInternshipAction(
     });
 
     revalidatePath("/interns");
-    revalidatePath("/mentors");
     revalidatePath("/dashboard");
     return successState();
   } catch (error) {
@@ -124,7 +105,6 @@ export async function updateInternshipAction(
     const parsed = updateInternshipSchema.safeParse({
       internshipId: formData.get("internshipId"),
       userId: formData.get("userId"),
-      mentorId: optionalValue(formData.get("mentorId")) ?? null,
       departmentId: optionalValue(formData.get("departmentId")) ?? null,
       startDate: formData.get("startDate"),
       endDate: formData.get("endDate"),
@@ -136,16 +116,12 @@ export async function updateInternshipAction(
       return errorState("Tanggal selesai tidak boleh sebelum tanggal mulai.");
     }
 
-    const referenceError = await validateReferences(
-      parsed.data.mentorId,
-      parsed.data.departmentId,
-    );
+    const referenceError = await validateDepartment(parsed.data.departmentId);
     if (referenceError) return errorState(referenceError);
 
     await db
       .update(internships)
       .set({
-        mentorId: parsed.data.mentorId ?? null,
         departmentId: parsed.data.departmentId ?? null,
         startDate: parsed.data.startDate,
         endDate: parsed.data.endDate,
@@ -155,7 +131,6 @@ export async function updateInternshipAction(
 
     revalidatePath("/interns");
     revalidatePath(`/interns/${parsed.data.userId}`);
-    revalidatePath("/mentors");
     revalidatePath("/dashboard");
     return successState();
   } catch (error) {
